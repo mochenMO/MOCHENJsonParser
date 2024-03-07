@@ -5,8 +5,6 @@ using namespace mochen::json;
 
 
 
-
-
 Json::Json() :m_type(Type::json_null)
 { }
 
@@ -23,11 +21,18 @@ Json::Json(const Json& _json)
 }
 
 
-Json::Json(Json&& _json)
+Json::Json(Json&& _json) noexcept
 {
 	m_type = _json.m_type;
 	m_value = _json.m_value;
 	_json.m_type = Type::json_null;
+}
+
+
+Json::Json(bool _value)
+{
+	m_type = Type::json_bool;
+	m_value.m_bool = _value;
 }
 
 
@@ -45,14 +50,7 @@ Json::Json(double _value)
 }
 
 
-Json::Json(bool _value)
-{
-	m_type = Type::json_bool;
-	m_value.m_bool = _value;
-}
-
-
-Json::Json(std::string _value)
+Json::Json(const std::string& _value)
 {
 	m_type = Type::json_string;
 	m_value.m_string = new std::string(_value);
@@ -72,14 +70,14 @@ Json::Json(Type _type)
 	{
 	case Type::json_null:
 		break;
+	case Type::json_bool:
+		m_value.m_bool = false;
+		break;
 	case Type::json_int:
 		m_value.m_int = 0;
 		break;
 	case Type::json_double:
 		m_value.m_double = 0.0;
-		break;
-	case Type::json_bool:
-		m_value.m_bool = false;
 		break;
 	case Type::json_string:
 		m_value.m_string = new std::string();
@@ -98,18 +96,39 @@ Json::Json(Type _type)
 
 void Json::operator=(const Json& _json)
 {
-	clear();  // ¸³ÖµÔËËã·ûÖØÔØµÄÊµÏÖ¹ý³Ì£¬ÏÈÇå¿ÕÔ­ÓÐµÄÊý¾ÝºÍ×ÊÔ´£¬ÔÙ½øÐÐ¸³Öµ
+	clear();  // ¸³ÖµÔËËã·ûÖØÔØµÄÊµÏÖ¹ý³Ì£¬ÏÈÇå¿ÕÔ­ÓÐµÄÊý¾ÝºÍ×ÊÔ´£¬ÔÙ½øÐÐ¸³Öµ 
 	auxiliary_deep_copy(_json);
+
+	//this->clear();
+	//Json temp{};
+	//temp.auxiliary_deep_copy(_json);
+	//this->auxiliary_deep_copy(temp);
+	//temp.clear();
 }
 
-void Json::operator=(Json&& _json)
+void Json::operator=(Json&& _json) noexcept
 {
 	clear();  // ¸³ÖµÔËËã·ûÖØÔØµÄÊµÏÖ¹ý³Ì£¬ÏÈÇå¿ÕÔ­ÓÐµÄÊý¾ÝºÍ×ÊÔ´£¬ÔÙ½øÐÐ¸³Öµ
 	m_type = _json.m_type;
 	m_value = _json.m_value;
 	_json.m_type = Type::json_null;
+
+	//this->clear();
+	//Json temp{};
+	//temp.auxiliary_deep_copy(_json);
+	//_json.clear();
+	//m_type = temp.m_type;
+	//m_value = temp.m_value;
 }
 
+void Json::operator=(bool _value)
+{
+	if (m_type != Type::json_bool) {
+		clear();
+		m_type = Type::json_bool;
+	}
+	m_value.m_bool = _value;
+}
 
 void Json::operator=(int _value)
 {
@@ -129,17 +148,8 @@ void Json::operator=(double _value)
 	m_value.m_double = _value;
 }
 
-void Json::operator=(bool _value)
-{
-	if (m_type != Type::json_bool) {
-		clear();
-		m_type = Type::json_bool;
-	}
-	m_value.m_bool = _value;
-}
 
-
-void Json::operator=(std::string _value)
+void Json::operator=(const std::string& _value)
 {
 	if (m_type != Type::json_string) {
 		clear();
@@ -160,7 +170,7 @@ void Json::operator=(const char* _value)
 bool Json::isHaveValue(const std::string& _key)
 {
 	if (m_type != Type::json_object) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return false;
 	}
 	return (m_value.m_object->find(_key) != m_value.m_object->end());
@@ -178,29 +188,54 @@ bool Json::isHaveValue(int _index)
 
 Json& Json::operator[](const std::string& _key) // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²éÇÒ»á´´½¨ÐÂÖµ¡£ 
 {
-	if (m_type != Type::json_object) {
+	//if (m_type != Type::json_object) {
+	//	printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	//	return getNullJson();
+	//}
+	//return (*(m_value.m_object))[_key];        // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
+
+
+	// Óöµ½ json_null ºÍ json_object ¾Í´´½¨£¬Í¬Ê±±ÜÃâ²Ù×÷NullJson¶ÔÏó
+	if ((m_type != Type::json_object && m_type != Type::json_null)
+		|| this == &getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ðø»á·µ»ØNullJson)
+	{
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return getNullJson();
 	}
-	return (*(m_value.m_object))[_key];   // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
+	if (m_type == Type::json_null) {
+		// m_type = Type::json_object;
+		(*this) = Json(Type::json_object);
+	}
+	return (*(m_value.m_object))[_key];
+
 }
 
 
-Json& Json::operator[](const char* _key) // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²éÇÒ»á´´½¨ÐÂÖµ¡£ 
+Json& Json::operator[](int _index)             // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²éÇÒ»á´´½¨ÐÂÖµ¡£
 {
-	if (m_type != Type::json_object) {
+	//if (m_type != Type::json_array) {
+	//	printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	//	return getNullJson();
+	//}
+	//int size = m_value.m_array->size();
+	//if (_index >= size) {
+	//	for (int i = size; i <= _index; ++i) {
+	//		m_value.m_array->push_back(Json{});
+	//	}
+	//}
+	//return (*(m_value.m_array))[_index];
+
+
+	// Óöµ½ json_null ºÍ json_array ¾Í´´½¨£¬Í¬Ê±±ÜÃâ²Ù×÷NullJson¶ÔÏó
+	if ((m_type != Type::json_array && m_type != Type::json_null)
+		|| this == &getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ðø»á·µ»ØNullJson)
+	{
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return getNullJson();
 	}
-	return (*(m_value.m_object))[_key];   // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
-}
-
-
-Json& Json::operator[](int _index)  // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²éÇÒ»á´´½¨ÐÂÖµ¡£
-{
-	if (m_type != Type::json_array) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();
+	if (m_type == Type::json_null) {
+		// m_type = Type::json_array;
+		(*this) = Json(Type::json_array);
 	}
 	int size = m_value.m_array->size();
 	if (_index >= size) {
@@ -215,7 +250,7 @@ Json& Json::operator[](int _index)  // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²éÇÒ»á´´½¨ÐÂÖ
 Json& Json::at(const std::string& _key)   // Í¨³£atº¯ÊýÓÐ±ß½ç¼ì²éµ«²»»á´´½¨ÐÂÖµ  
 {
 	if (m_type != Type::json_object) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return getNullJson();
 	}
 	auto it = m_value.m_object->find(_key);
@@ -241,11 +276,19 @@ Json& Json::at(int _index)  // Í¨³£atº¯ÊýÓÐ±ß½ç¼ì²éµ«²»»á´´½¨ÐÂÖµ
 	return (*(m_value.m_array))[_index];
 }
 
+bool Json::get_bool()
+{
+	if (m_type != Type::json_bool) {
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	}
+	return m_value.m_bool;
+}
+
 
 int	Json::get_int()
 {
 	if (m_type != Type::json_int) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 	}
 	return m_value.m_int;
 }
@@ -253,23 +296,16 @@ int	Json::get_int()
 double Json::get_double()
 {
 	if (m_type != Type::json_double) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 	}
 	return m_value.m_double;
 }
 
-bool Json::get_bool()
-{
-	if (m_type != Type::json_bool) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-	}
-	return m_value.m_bool;
-}
 
 std::string& Json::get_string()
 {
 	if (m_type != Type::json_string) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 	}
 	return *m_value.m_string;
 }
@@ -277,7 +313,7 @@ std::string& Json::get_string()
 std::vector<Json>& Json::get_array()
 {
 	if (m_type != Type::json_array) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 	}
 	return *m_value.m_array;
 }
@@ -285,57 +321,37 @@ std::vector<Json>& Json::get_array()
 std::map<std::string, Json>& Json::get_object()
 {
 	if (m_type != Type::json_object) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 	}
 	return *m_value.m_object;
 }
 
 
-Json::operator int&()
-{
-	if (m_type != Type::json_int) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-	}
-	return m_value.m_int;
-}
-
-Json::operator double&()
-{
-	if (m_type != Type::json_double) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-	}
-	return m_value.m_double;
-}
-
-Json::operator bool&()
-{
-	if (m_type != Type::json_bool) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-	}
-	return m_value.m_bool;
-}
-
-Json::operator std::string&()
-{
-	if (m_type != Type::json_string) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-	}
-	return *m_value.m_string;
-}
+bool Json::is_null() { return m_type == Type::json_null; }
+bool Json::is_bool() { return m_type == Type::json_bool; }
+bool Json::is_int() { return m_type == Type::json_int; }
+bool Json::is_double() { return m_type == Type::json_double; }
+bool Json::is_array() { return m_type == Type::json_array; }
+bool Json::is_object() { return m_type == Type::json_object; }
 
 
-bool Json::insert(const std::string& _key, const Json& _json)
+bool Json::append(const Json& _json)
 {
-	if (m_type == Type::json_null) {
-		// m_type = Type::json_object;
-		// m_value.m_object = new std::map<std::string, Json>();
-		(*this) = Json(Type::json_object);
-	}
-	else if (m_type != Type::json_object) {
+	if (m_type != Type::json_array) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return false;
 	}
-	(*(m_value.m_object))[_key] = _json;   // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
+	m_value.m_array->push_back(_json);
+	return true;
+}
+
+bool Json::append(Json&& _json) noexcept
+{
+	if (m_type != Type::json_array) {
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return false;
+	}
+	m_value.m_array->push_back(std::move(_json));
 	return true;
 }
 
@@ -357,7 +373,62 @@ bool Json::insert(int _index, const Json& _json)
 			m_value.m_array->push_back(Json{});
 		}
 	}
-	(*(m_value.m_array))[_index] = _json;   
+	(*(m_value.m_array))[_index] = _json;
+	return true;
+}
+
+
+bool Json::insert(int _index, Json&& _json) noexcept
+{
+	if (m_type == Type::json_null) {
+		// m_type = Type::json_array;
+		// m_value.m_array = new std::vector<Json>();
+		(*this) = Json(Type::json_array);
+	}
+	else if (m_type != Type::json_array) {
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return false;
+	}
+	int size = m_value.m_array->size();
+	if (_index >= size) {
+		for (int i = size; i <= _index; ++i) {
+			m_value.m_array->push_back(Json{});
+		}
+	}
+	(*(m_value.m_array))[_index] = std::move(_json);
+	return true;
+
+
+}
+
+
+bool Json::insert(const std::string& _key, const Json& _json)
+{
+	if (m_type == Type::json_null) {
+		// m_type = Type::json_object;
+		// m_value.m_object = new std::map<std::string, Json>();
+		(*this) = Json(Type::json_object);
+	}
+	else if (m_type != Type::json_object) {
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return false;
+	}
+	(*(m_value.m_object))[_key] = _json;   // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
+	return true;
+}
+
+bool Json::insert(const std::string& _key, Json&& _json) noexcept
+{
+	if (m_type == Type::json_null) {
+		// m_type = Type::json_object;
+		// m_value.m_object = new std::map<std::string, Json>();
+		(*this) = Json(Type::json_object);
+	}
+	else if (m_type != Type::json_object) {
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return false;
+	}
+	(*(m_value.m_object))[_key] = std::move(_json);   // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
 	return true;
 }
 
@@ -390,6 +461,7 @@ bool Json::remove(int _index)
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return false;
 	}
+	(*(m_value.m_array))[_index].clear();
 	m_value.m_array->erase(m_value.m_array->begin() + _index);   // É¾³ýÏÂ±êÎª_indexµÄÔªËØ
 	return true;
 }
@@ -403,14 +475,14 @@ std::string Json::to_string()
 	case Type::json_null:   // null
 		ss << "null";
 		break;
+	case Json::Type::json_bool:    // true false
+		m_value.m_bool == true ? ss << "true" : ss << "false";
+		break;
 	case Type::json_int:    // 1234
 		ss << m_value.m_int;   
 		break;
 	case Json::Type::json_double:  // 123.456
 		ss << m_value.m_double;
-		break;
-	case Json::Type::json_bool:    // true false
-		m_value.m_bool == true ? ss << "true" : ss << "false";
 		break;
 	case Json::Type::json_string:  // "abcdef"
 		ss << "\"" << *m_value.m_string << "\"";
@@ -446,7 +518,7 @@ std::string Json::to_string()
 }
 
 
-Json::Type Json::getValueType()
+Json::Type Json::getType()
 {
 	return m_type;
 }
@@ -458,14 +530,14 @@ void Json::clear()
 	{
 	case Type::json_null:
 		break;
+	case Type::json_bool:
+		m_value.m_bool = false;
+		break;
 	case Type::json_int:
 		m_value.m_int = 0;
 		break;
 	case Type::json_double:
 		m_value.m_double = 0.0;
-		break;
-	case Type::json_bool:
-		m_value.m_bool = false;
 		break;
 	case Type::json_string:
 		delete m_value.m_string;
@@ -500,14 +572,14 @@ void Json::auxiliary_deep_copy(const Json& _json)
 	{
 	case Type::json_null:
 		break;
+	case Type::json_bool:
+		m_value.m_bool = _json.m_value.m_int;
+		break;
 	case Type::json_int: 
 		m_value.m_int = _json.m_value.m_int;
 		break;
 	case Type::json_double:
-		m_value.m_double = _json.m_value.m_int;
-		break;
-	case Type::json_bool:
-		m_value.m_bool = _json.m_value.m_int;
+		m_value.m_double = _json.m_value.m_double;
 		break;
 	case Type::json_string:
 		m_value.m_string = new std::string(*_json.m_value.m_string);
@@ -516,16 +588,26 @@ void Json::auxiliary_deep_copy(const Json& _json)
 	{
 		int size = _json.m_value.m_array->size();
 		m_value.m_array = new std::vector<Json>(size);
-		for (int i = 0; i < 0; ++i) {    // Í¨³£¿½±´Õû¸övectorÖÐµÄÊý¾ÝÊ±£¬ÓÃÏÂ±ê±éÀú
-			(*(m_value.m_array))[i].auxiliary_deep_copy((*_json.m_value.m_array)[i]);
+		for (int i = 0; i < size; ++i) {    // Í¨³£¿½±´Õû¸övectorÖÐµÄÊý¾ÝÊ±£¬ÓÃÏÂ±ê±éÀú
+			(*(m_value.m_array))[i].auxiliary_deep_copy((*(_json.m_value.m_array))[i]);
 		}
 		break;
+
+		//// ²âÊÔÒ»ÏÂ
+		//m_value.m_array = new std::vector<Json>(size);
+		//for (auto it = _json.m_value.m_array->begin(); it != _json.m_value.m_array->end(); ++it) {    // Í¨³£¿½±´Õû¸övectorÖÐµÄÊý¾ÝÊ±£¬ÓÃÏÂ±ê±éÀú
+		//	m_value.m_array->push_back(*it);   // push_back ÄÚ²¿µ÷ÓÃ JosnµÄ¿½±´¹¹Ôìº¯Êý£¬JosnµÄ¿½±´¹¹Ôìº¯Êý»áµôÓÃ auxiliary_deep_copy º¯Êý
+		//}
+		//break;
 	}
 	case Type::json_object:
 	{
 		m_value.m_object = new std::map<std::string, Json>();
 		for (auto it = _json.m_value.m_object->begin(); it != _json.m_value.m_object->end(); ++it) {  // Í¨³£¿½±´Õû¸ömapÖÐµÄÊý¾ÝÊ±£¬ÓÃµü´úÆ÷±éÀú
-			(*(m_value.m_object))[it->first].auxiliary_deep_copy(it->second);    // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
+			// (*(m_value.m_object))[it->first].auxiliary_deep_copy(it->second);    // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
+
+			(*(m_value.m_object))[it->first].auxiliary_deep_copy(it->second);    // ²»ÄÜÓÃat(),ÒòÎªÈç¹ûkey²»´æÔÚ»á±¨Òì³£
+			                                                                     // ÏÈ(*(m_value.m_object))[it->first]´´½¨¿Õ¼ä£¬ÔÙassisted_deep_copy();
 		}
 		break;
 	}
@@ -538,8 +620,41 @@ void Json::auxiliary_deep_copy(const Json& _json)
 Json& Json::getNullJson()
 {
 	static Json null_json{};    // ¾²Ì¬±äÁ¿µÄ´´½¨£¬Ó¦ÔÚ³ÉÔ±º¯ÊýÖÐ½øÐÐ
-	if (null_json.getValueType() != Type::json_null) {   // ÖØÖÃ»úÖÆ£¬·ÀÖ¹ÓÃ»§´íÎóµÄ½øÐÐ¸³Öµ²Ù×÷
+	if (null_json.getType() != Type::json_null) {   // ÖØÖÃ»úÖÆ£¬·ÀÖ¹ÓÃ»§´íÎóµÄ½øÐÐ¸³Öµ²Ù×÷
 		null_json = Json{};
 	}
 	return null_json;
 }
+
+
+//Json::operator int&()
+//{
+//	if (m_type != Type::json_int) {
+//		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+//	}
+//	return m_value.m_int;
+//}
+//
+//Json::operator double&()
+//{
+//	if (m_type != Type::json_double) {
+//		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+//	}
+//	return m_value.m_double;
+//}
+//
+//Json::operator bool&()
+//{
+//	if (m_type != Type::json_bool) {
+//		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+//	}
+//	return m_value.m_bool;
+//}
+//
+//Json::operator std::string&()
+//{
+//	if (m_type != Type::json_string) {
+//		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+//	}
+//	return *m_value.m_string;
+//}
