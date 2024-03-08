@@ -146,6 +146,7 @@ public:
 	void clear();
 	void auxiliary_deep_copy(const Json& _json);
 	Json& getNullJson();                                     // 用于返回空值，但有缺陷不是很安全
+	bool save(const std::string& _path);
 
 	//operator bool&();
 	//operator int&();     // 类型转换运算符重载是个陷阱，用一点用上的便利性换安全性和不确定性得不偿失
@@ -164,15 +165,15 @@ public:
 	JsonParser();
 	~JsonParser();
 
-	JsonParser(const JsonParser&) = default;
-	JsonParser(JsonParser&&) = default;
+	JsonParser(const JsonParser&) = delete;
+	JsonParser(JsonParser&&) = delete;
 
 	JsonParser(const std::string& _string);
 	JsonParser(const char* _string);
 	JsonParser(std::string&& _string);
 
-	JsonParser& operator=(const JsonParser&) noexcept = default;
-	JsonParser& operator=(JsonParser&&)  noexcept  = default;
+	JsonParser& operator=(const JsonParser&) noexcept = delete;
+	JsonParser& operator=(JsonParser&&)  noexcept  = delete;
 	
 	void loadByString(const std::string& _string);
 	void loadByString(const char* _string);
@@ -190,27 +191,29 @@ public:
 	Json parse_array();        
 	Json parse_object();
 
+	void clear();
 	bool isReadEntireFile();
-	bool save(const std::string& _path);
 };
 
 
-
+// 使用的前提条件：保证Josn数据是正确性
 class JsonReader : public JsonParser
 {
 public:
 	JsonReader();
 	~JsonReader();
 
-	JsonReader(const JsonReader&) = default;
-	JsonReader(JsonReader&&) = default;
+	JsonReader(const JsonReader&) = delete;
+	JsonReader(JsonReader&&) = delete;
 
 	JsonReader(const std::string& _string);
 	JsonReader(const char* _string);
 	JsonReader(std::string&& _string);
 
-	JsonReader& operator=(const JsonReader&) noexcept = default;
-	JsonReader& operator=(JsonReader&&)  noexcept = default;
+	JsonReader& operator=(const JsonReader&) noexcept = delete;
+	JsonReader& operator=(JsonReader&&)  noexcept = delete;
+
+	Json startParse();
 
 	JsonReader& operator[](const std::string _key);
 	JsonReader& operator[](int _index);

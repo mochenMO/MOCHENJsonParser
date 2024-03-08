@@ -136,6 +136,16 @@ void test04()
 	j1.remove("array");
 	j1["object"]["nested_array"].remove(0);
 	printf("%s\n\n", j1.to_string().c_str());
+
+
+
+	j1.save("123.json");
+	JsonParser jp1{};
+	jp1.loadByFile("123.json");
+	Json j2 = jp1.parse();
+
+	printf("%s\n\n", j2.to_string().c_str());
+	printf("\n\n");
 }
 
 
@@ -161,11 +171,12 @@ void test05()
 
 	JsonReader jr(str);
 
-	// printf("%s\n\n", jr.parse().to_string().c_str());
-	// printf("%s\n\n", jr["array"][2][1].parse().get_string().c_str());
-	// printf("%s\n\n", jr["array"][3]["key"].parse().get_string().c_str());
-	// printf("%d\n\n", jr["object"]["nested_array"][2].parse().get_int());
-	printf("%d\n\n", jr[0]["nested_array"][2]["asd"].parse().getType());
+	printf("%s\n\n", jr.startParse().to_string().c_str());
+	printf("%s\n\n", jr["array"][2][1].startParse().get_string().c_str());
+	printf("%s\n\n", jr["array"][3]["key"].startParse().get_string().c_str());
+	printf("%d\n\n", jr["object"]["nested_array"][2].startParse().get_int());
+	// printf("%d\n\n", jr[0]["nested_array"][2]["asd"].startParse().getType());  // 没找到返回空值
+	printf("\n\n");
 }
 
 int main()
@@ -173,7 +184,7 @@ int main()
 	{
 		test04();
 
-		// test05();
+		test05();
 
 		printf("\n\n");
 	}

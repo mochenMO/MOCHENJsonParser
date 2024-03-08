@@ -1,0 +1,1 @@
+{"bool":false, "decimal":3.14000000, "integer":42, "negative":-10, "null":null, "object":{"nested_array":[88, 99], "nested_object":{"inner_key":"inner_value"}, "number":123, "text":"example"}, "scientific_negative_decimal":-0.00001230, "scientific_positive":299792458.00000000, "string":"Hello, world!"}

@@ -619,6 +619,23 @@ Json& Json::getNullJson()
 }
 
 
+bool Json::save(const std::string& _path)
+{
+	FILE* fp;
+	if ((fp = fopen(_path.c_str(), "w")) == nullptr) {
+		printf("open file fild");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return false;
+	}
+	if (this->getType() == Type::json_null) {
+		printf("json is nulljosn");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return false;
+	}
+	std::string str = std::move(this->to_string());
+	fwrite(str.c_str(), 1, str.size(), fp);
+	fclose(fp);
+	return true;
+}
+
 //Json::operator int&()
 //{
 //	if (m_type != Type::json_int) {
@@ -697,6 +714,7 @@ void JsonParser::loadByString(const std::string& _string)
 
 void JsonParser::loadByString(const char* _string)
 {
+	clear();
 	m_string = (char*)malloc(sizeof(char) * (strlen(_string) + 1));   // +1保存结尾的\0
 	strcpy(m_string, _string);
 	m_index = 0;
@@ -704,6 +722,7 @@ void JsonParser::loadByString(const char* _string)
 
 void JsonParser::loadByString(std::string&& _string)
 {
+	clear();
 	m_string = (char*)(_string.c_str());
 	m_index = 0;
 }
@@ -711,6 +730,8 @@ void JsonParser::loadByString(std::string&& _string)
 
 bool JsonParser::loadByFile(const std::string& _path)
 {
+	clear();
+
 	FILE* fp;
 	if ((fp = fopen(_path.c_str(), "r")) == nullptr) {
 		printf("open file fild");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
@@ -980,13 +1001,20 @@ Json JsonParser::parse_object()
 }
 
 
+void JsonParser::clear()
+{
+	if (m_string != nullptr) {
+		free(m_string);  // 这里不能用delete
+	}
+	m_string = nullptr;
+	m_index = 0;
+}
+
 bool JsonParser::isReadEntireFile()
 {
 	get_next_token();  // 移动到'\0'
 	return (m_string[m_index] == '\0');
 }
-
-
 
 // =============================================================================================================
 // class JsonReader
@@ -1146,4 +1174,18 @@ JsonReader& JsonReader::operator[](int _index)
 		++m_index;  // 跳过指定的字符
 	}
 	return *this;   // 此时 m_string[m_index] = ']'
+}
+
+
+Json JsonReader::startParse()
+{
+	if (m_string == nullptr) {
+		printf("m_string is nullptr");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return Json(Json::Type::json_null);
+	}
+	else {
+		Json json = std::move(parse());
+		m_index = 0;
+		return json;
+	}
 }
