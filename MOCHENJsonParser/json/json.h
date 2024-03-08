@@ -9,7 +9,7 @@
 /*// 所学到的知识
 * 1.用union代替class，大幅节约存储空间
 * 2.用class enum 代替 enum，避免其隐式转换层int
-* 3.容器只能存非const数据，同时begin和end返回的是迭代器的实体，不是引用
+* 3.容器只能存非const数据，通常存值类型，同时begin和end返回的是迭代器的实体，不是引用。
 * 4.map中[]运算符重载，当没有找到key值时，则自动创建一个新的
 * 5.通常拷贝整个vector中的数据时，用下标遍历。拷贝整个map中的数据时，用迭代器遍历。效率更高，可读性更好。
 * 
@@ -115,10 +115,10 @@ public:
 
 	bool get_bool();                             // 注意，当类型不匹配时输出的值是未知的
 	int	get_int();
-	double get_double();
-	std::string& get_string();
-	std::vector<Json>& get_array();
-	std::map<std::string, Json>& get_object();
+	double get_double();                         
+	std::string get_string();                     // 注意返回值类型
+	std::vector<Json> get_array();
+	std::map<std::string, Json> get_object();
 
 	bool is_null();
 	bool is_bool();

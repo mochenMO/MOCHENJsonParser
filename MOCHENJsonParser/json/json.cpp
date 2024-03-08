@@ -97,31 +97,16 @@ Json::Json(Type _type)
 
 void Json::operator=(const Json& _json)
 {
-	// clear();  // 赋值运算符重载的实现过程，先清空原有的数据和资源，再进行赋值 
-	// auxiliary_deep_copy(_json);
-
-	// 安全函数，解决自己拷贝赋值自己的情况
-	this->clear();
-	Json temp{};
-	temp.auxiliary_deep_copy(_json);
-	this->auxiliary_deep_copy(temp);
-	temp.clear();
+	 clear();  // 赋值运算符重载的实现过程，先清空原有的数据和资源，再进行赋值 
+	 auxiliary_deep_copy(_json);
 }
 
 void Json::operator=(Json&& _json) noexcept
 {
-	//clear();  // 赋值运算符重载的实现过程，先清空原有的数据和资源，再进行赋值
-	//m_type = _json.m_type;
-	//m_value = _json.m_value;
-	//_json.m_type = Type::json_null;
-
-	// 安全函数，解决自己移动赋值自己的情况
-	this->clear();
-	Json temp{};
-	temp.auxiliary_deep_copy(_json);
-	this->auxiliary_deep_copy(temp);
-	temp.clear();
-	_json.clear();
+	clear();  // 赋值运算符重载的实现过程，先清空原有的数据和资源，再进行赋值
+	m_type = _json.m_type;
+	m_value = _json.m_value;
+	_json.m_type = Type::json_null;
 }
 
 void Json::operator=(bool _value)
@@ -307,7 +292,7 @@ double Json::get_double()
 }
 
 
-std::string& Json::get_string()
+std::string Json::get_string()
 {
 	if (m_type != Type::json_string) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
@@ -315,7 +300,7 @@ std::string& Json::get_string()
 	return *m_value.m_string;
 }
 
-std::vector<Json>& Json::get_array()
+std::vector<Json> Json::get_array()
 {
 	if (m_type != Type::json_array) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
@@ -323,7 +308,7 @@ std::vector<Json>& Json::get_array()
 	return *m_value.m_array;
 }
 
-std::map<std::string, Json>& Json::get_object()
+std::map<std::string, Json> Json::get_object()
 {
 	if (m_type != Type::json_object) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
