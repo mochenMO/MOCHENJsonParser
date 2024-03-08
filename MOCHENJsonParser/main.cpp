@@ -182,9 +182,13 @@ void test05()
 int main()
 {
 	{
-		test04();
+		// test04();
+		// test05();
 
-		test05();
+		JsonParser jp;
+		jp.loadByString("asdsa");
+		jp.parse();
+
 
 		printf("\n\n");
 	}
