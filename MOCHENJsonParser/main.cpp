@@ -46,15 +46,36 @@ int main()
 		j2[3] = "qwert";
 		printf("%s\n", j2.to_string().c_str());
 
+		Json j3{};
+		j3[0] = 987;
+		j3[1] = 654.321;
+		printf("%s\n", j3.to_string().c_str());
+
+		//printf("%lf\n", j2[1].get_double());
 
 		//j2[4] = j1;
 		//printf("%s\n", j2.to_string().c_str());
 
+		//Json temp = j2[1];
+		//j2[4].operator=(temp);
 
-		//j2[4] = j2;  
-		j2[4] = std::move(j2);
+		//j2[4].operator=(j2[1]);
+		
+		//j2[4] = std::move(j2);
 
+		//j2[4] = j1["k2"];
+
+		j2[4] = j2[1];
+
+		j2[4] = j3[1];
+
+		
 		printf("%s\n", j2.to_string().c_str());
+		// printf("%lf\n", j2[1].get_double());  /////////////
+
+
+
+		j1["k5"] = j1;
 		printf("%s\n", j1.to_string().c_str());
 
 		printf("\n\n");

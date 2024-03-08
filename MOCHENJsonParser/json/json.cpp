@@ -91,34 +91,37 @@ Json::Json(Type _type)
 	default:
 		break;
 	}
+	return;
 }
 
 
 void Json::operator=(const Json& _json)
 {
-	clear();  // 赋值运算符重载的实现过程，先清空原有的数据和资源，再进行赋值 
-	auxiliary_deep_copy(_json);
+	// clear();  // 赋值运算符重载的实现过程，先清空原有的数据和资源，再进行赋值 
+	// auxiliary_deep_copy(_json);
 
-	//this->clear();
-	//Json temp{};
-	//temp.auxiliary_deep_copy(_json);
-	//this->auxiliary_deep_copy(temp);
-	//temp.clear();
+	// 安全函数，解决自己拷贝赋值自己的情况
+	this->clear();
+	Json temp{};
+	temp.auxiliary_deep_copy(_json);
+	this->auxiliary_deep_copy(temp);
+	temp.clear();
 }
 
 void Json::operator=(Json&& _json) noexcept
 {
-	clear();  // 赋值运算符重载的实现过程，先清空原有的数据和资源，再进行赋值
-	m_type = _json.m_type;
-	m_value = _json.m_value;
-	_json.m_type = Type::json_null;
+	//clear();  // 赋值运算符重载的实现过程，先清空原有的数据和资源，再进行赋值
+	//m_type = _json.m_type;
+	//m_value = _json.m_value;
+	//_json.m_type = Type::json_null;
 
-	//this->clear();
-	//Json temp{};
-	//temp.auxiliary_deep_copy(_json);
-	//_json.clear();
-	//m_type = temp.m_type;
-	//m_value = temp.m_value;
+	// 安全函数，解决自己移动赋值自己的情况
+	this->clear();
+	Json temp{};
+	temp.auxiliary_deep_copy(_json);
+	this->auxiliary_deep_copy(temp);
+	temp.clear();
+	_json.clear();
 }
 
 void Json::operator=(bool _value)
@@ -243,6 +246,8 @@ Json& Json::operator[](int _index)             // 通常[]运算符重载，没有边界检查
 			m_value.m_array->push_back(Json{});
 		}
 	}
+
+	// printf("%d json_array\n", (int)(*(m_value.m_array))[_index].getType());
 	return (*(m_value.m_array))[_index];
 }
 
