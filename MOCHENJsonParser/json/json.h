@@ -41,11 +41,14 @@
 #ifndef _MOCHEN_JSON_H_
 #define _MOCHEN_JSON_H_
 
+#define _CRT_SECURE_NO_WARNINGS
+
 
 #include <string>
 #include <vector>
 #include <map>
 #include <sstream>    // std::stringstream
+#include <iomanip>    // std::setprecision 扩展 std::stringstream 存储的小数精度
 
 
 namespace mochen 
@@ -155,23 +158,40 @@ public:
 class JsonParser
 {
 private:
-	std::string m_str;
+	char* m_string;
 	int m_index;
 
 public:
 	JsonParser();
 	~JsonParser();
 
-	//Parser(const Parser& _parser);
-	//Parser(Parser&& _parser);
-	//Parser(std::string _str);
+	JsonParser(const JsonParser&) = default;
+	JsonParser(JsonParser&&) = default;
 
-	//Parser& operator=(const Parser& _parser);
-	//Parser& operator=(Parser&& _parser);
+	JsonParser& operator=(const JsonParser&) noexcept = default;
+	JsonParser& operator=(JsonParser&&)  noexcept  = default;
 
+	JsonParser(const std::string& _string);
+	JsonParser(const char* _string);
+	JsonParser(std::string&& _string);
+	
+	void loadByString(const std::string& _string);
+	void loadByString(const char* _string);
+	void loadByString(std::string&& _string);
 
+	bool loadByFile(const std::string& _path);
+	
+	char get_next_token();
 
+	Json parse();
+	Json parse_null();
+	Json parse_bool();
+	Json parse_number();
+	std::string parse_string();  // 不返回Json是因为josn_object的key也是std::string，如果返回Json还要申请内存并释放
+	Json parse_array();        
+	Json parse_object();
 
+	Json stratParse();
 };
 
 

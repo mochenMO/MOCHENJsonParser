@@ -75,7 +75,19 @@ void test01()
 int main()
 {
 	{
+		// auto str = R"("\"qwe\"qwew\"")";
+		// auto str = R"([1,2,3])";
+		// auto str = R"({k1:123,k2:"abc",k3:true})";
+		auto str = R"({"k1":123,"k2":"abc","k3":true})";
 
+		JsonParser jp(str);
+
+		Json j1 = jp.parse();
+
+
+		printf("%s\n", j1.to_string().c_str());
+
+		printf("\n\n");
 	}
 
 	_CrtDumpMemoryLeaks();

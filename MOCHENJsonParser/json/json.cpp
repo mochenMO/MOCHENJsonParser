@@ -3,9 +3,10 @@
 
 using namespace mochen::json;
 
+// =============================================================================================================
+// class Json
 
-
-Json::Json() :m_type(Type::json_null)
+Json::Json() : m_type(Type::json_null)
 { }
 
 
@@ -472,7 +473,8 @@ std::string Json::to_string()
 		ss << m_value.m_int;   
 		break;
 	case Json::Type::json_double:  // 123.456
-		ss << m_value.m_double;
+		// ss << m_value.m_double;   // ss默认只存两位小数
+		ss << std::fixed << std::setprecision(8) << m_value.m_double;;  // #include <iomanip>  
 		break;
 	case Json::Type::json_string:  // "abcdef"
 		ss << "\"" << *m_value.m_string << "\"";
@@ -648,3 +650,346 @@ Json& Json::getNullJson()
 //	}
 //	return *m_value.m_string;
 //}
+
+
+// =============================================================================================================
+// class JsonParser
+
+
+
+
+JsonParser::JsonParser() : m_string(nullptr), m_index(0)
+{ }
+
+JsonParser::~JsonParser()
+{
+	if (m_string != nullptr) {
+		free(m_string);  // 这里不能用delete
+	}
+	m_string = nullptr;
+}
+
+JsonParser::JsonParser(const std::string& _string)
+{
+	JsonParser(_string.c_str());
+}
+
+
+JsonParser::JsonParser(const char* _string)
+{
+	m_string = (char*)malloc(sizeof(char) * (strlen(_string) + 1));   // +1保存结尾的\0
+	strcpy(m_string, _string);
+	m_index = 0;
+}
+
+JsonParser::JsonParser(std::string&& _string)
+{
+	m_string = (char*)(_string.c_str());
+	m_index = 0;
+}
+
+
+
+void JsonParser::loadByString(const std::string& _string)
+{
+	loadByString(_string.c_str());
+}
+
+void JsonParser::loadByString(const char* _string)
+{
+	m_string = (char*)malloc(sizeof(char) * (strlen(_string) + 1));   // +1保存结尾的\0
+	strcpy(m_string, _string);
+	m_index = 0;
+}
+
+void JsonParser::loadByString(std::string&& _string)
+{
+	m_string = (char*)(_string.c_str());
+	m_index = 0;
+}
+
+
+bool JsonParser::loadByFile(const std::string& _path)
+{
+	FILE* fp;
+	if ((fp = fopen(_path.c_str(), "r")) == nullptr) {
+		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return false;
+	}
+
+	fseek(fp, 0, SEEK_END);   
+	int size = ftell(fp);     // 计算文件的大小
+	fseek(fp, 0, SEEK_SET);
+
+	m_string = (char*)malloc(sizeof(char) * (size + 1));// +1保存结尾的\0
+	fread(m_string, 1, size, fp);
+	m_string[size] = '\0';
+
+	fclose(fp);
+	return true;
+}
+
+
+char JsonParser::get_next_token()
+{
+	if (m_string[m_index] == ' ' 
+		|| m_string[m_index] == '\n' 
+		|| m_string[m_index] == '\n' 
+		|| m_string[m_index] == '\t') 
+	{
+		++m_index;
+	}
+	return m_string[m_index];
+}
+
+Json JsonParser::parse()
+{
+	char ch = get_next_token();
+	switch (ch)
+	{
+	case 'n':
+		return parse_null();
+	case 't':
+	case 'f':
+		return parse_bool();
+	case '-':
+	case '0':
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+	case '6':
+	case '7':
+	case '8':
+	case '9':
+		return parse_number();
+	case '"':
+		return Json(parse_string());
+	case '[':
+		return parse_array();
+	case '{':
+		return parse_object();
+	default:  // 取到'\0'了，或者格式错了
+		printf("parse failed"); // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return Json(Json::Type::json_null);
+	}
+}
+
+Json JsonParser::parse_null()
+{
+	if (strncmp(&m_string[m_index], "null", 4) == 0) {
+		m_index += 4;  // 跳过null     
+		return Json(Json::Type::json_null);
+	}
+	else {
+		m_index = strlen(m_string);    // 将m_index设为最后
+		printf("parse json_null failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return Json(Json::Type::json_null);
+	}
+}
+
+
+Json JsonParser::parse_bool()
+{
+	if (strncmp(&m_string[m_index], "true", 4) == 0) {
+		m_index += 4;  // 跳过true    
+		return Json(true);
+	}
+	else if (strncmp(&m_string[m_index], "false", 5) == 0) {
+		m_index += 5;  // 跳过false 
+		return Json(false);
+	}
+	else {
+		m_index = strlen(m_string);    // 将m_index设为最后
+		printf("parse json_bool failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return Json(Json::Type::json_null);
+	}
+}
+
+
+
+Json JsonParser::parse_number()
+{
+	// 科学计数法说明
+	// -123.445e-2    -123.445e+2    123.445E2  123.445E+
+	// -123   -123.123
+
+
+	//int tempPos = m_index;   // 保存number的起始位置
+	//if (m_string[m_index] == '-') {
+	//	++m_index;
+	//}
+	//while (m_string[m_index] >= '0' && m_string[m_index] <= '9') {
+	//	++m_index;
+	//}
+	//if (m_string[m_index] != '.' && m_string[m_index] != 'e') {
+	//	return Json(atoi(&m_string[tempPos]));   // atoi遇到非数字字符会自动停止
+	//}
+	//++m_index;   // 跳过'.'
+	//while (m_string[m_index] >= '0' && m_string[m_index] <= '9') {
+	//	++m_index;
+	//}
+
+	char* startPtr = &m_string[m_index];   // 保存number的起始位置
+	char* endPtr = nullptr;                // 保存number的结束位置
+	if (m_string[m_index] == '-') {
+		++m_index;
+	}
+	while (m_string[m_index] >= '0' && m_string[m_index] <= '9') {
+		++m_index;
+	}
+	// 判断是不是科学技数法和小数
+	if(m_string[m_index] != '.'
+		&& m_string[m_index] != 'e'
+		&& m_string[m_index] != 'E')
+	{
+		int res = strtol(startPtr, &endPtr, 0);
+		while (m_string[m_index] != *endPtr) {
+			++m_index;
+		}
+		return Json(res);
+	}
+	// 判断是不是科学技数法和小数
+	//if (m_string[m_index] == '.'
+	//	|| m_string[m_index] == 'e'
+	//	|| m_string[m_index] == 'E')
+	//{
+	//	double res = strtod(startPtr, &endPtr);
+	//	while (*startPtr != *endPtr) {
+	//		++m_index;
+	//	}
+	//	return Json(res);
+	//}
+	//m_index = strlen(m_string);    // 将m_index设为最后
+	//printf("parse json_number failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	//return Json(Json::Type::json_null);
+
+	// 处理科学技数法和小数
+	double res = strtod(startPtr, &endPtr);
+	while (m_string[m_index] != *endPtr) {
+		++m_index;
+	}
+	return Json(res);
+	
+}
+
+
+std::string JsonParser::parse_string()
+{
+	// "string"    "123\"string\"2\"233"   
+	
+	++m_index;  // 跳过开头的"号
+	int startPos = m_index;
+
+	while (m_string[m_index] != '\0') {
+		if (m_string[m_index] == '"' && m_string[m_index - 1] != '\\') {
+			break;
+		}
+		++m_index;
+	}
+	if (m_string[m_index] == '\0') {
+		printf("parse json_string failed");
+		return "";
+	}
+	else {
+		++m_index;  // 跳过结尾的"号
+		return std::string(m_string, startPos, m_index - startPos - 1);
+	}
+
+}
+
+
+
+Json JsonParser::parse_array()
+{
+	Json arr(Json::Type::json_array);
+	++m_index;  // 跳过开头的'['
+	char ch = get_next_token();
+
+	// 空数组
+	if (ch == ']') {
+		++m_index; // 跳过最后的']'
+		return arr;
+	}
+	// 非空数组
+	while (m_string[m_index] != '\0') {
+		arr.append(std::move(parse()));
+		ch = get_next_token();
+		if (ch == ']') {
+			++m_index;  // 跳过最后的']'
+			return arr;
+		}
+		else if (ch == ',' ) {
+			++m_index;  // 跳过','
+			ch = get_next_token();
+		}
+		else {
+			break;
+		}
+	}
+	m_index = strlen(m_string);    // 将m_index设为最后
+	printf("parse json_array failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	return Json(Json::Type::json_null);
+}
+
+
+
+Json JsonParser::parse_object()
+{
+	Json obj(Json::Type::json_object);
+	std::string key;
+	++m_index;  // 跳过开头的'{'
+	char ch = get_next_token();
+
+	// 空对象
+	if (ch == '}') {
+		++m_index; // 跳过最后的'}'
+		return obj;
+	}
+	// 非空对象
+	while (m_string[m_index] != '\0') {
+		if (ch != '"') {
+			break;
+		}
+		key = std::move(parse_string());
+
+		ch = get_next_token();
+		if (ch != ':') {  
+			break;
+		}
+		++m_index; // 跳过':'
+
+		ch = get_next_token();
+		obj[key] = std::move(parse());
+
+		ch = get_next_token();
+		if (ch == '}') {
+			++m_index;  // 跳过最后的'}'
+			return obj;
+		}
+
+		if (ch != ',') {
+			break;
+		}
+		++m_index;  // 跳过','
+		ch = get_next_token();
+	}
+	m_index = strlen(m_string);    // 将m_index设为最后
+	printf("parse json_object failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	return Json(Json::Type::json_null);
+}
+
+
+
+Json JsonParser::stratParse()
+{
+	m_index = 0;
+	Json temp = std::move(parse());
+
+	if (m_string[m_index] != '\0') {
+		printf("josn 文件格式不完整");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	}
+
+	return temp;
+}
