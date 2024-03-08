@@ -69,23 +69,111 @@ void test01()
 }
 
 
+void test02()
+{
+	auto str = R"(
+		    {
+		  "key1": 123,
+		  "key2": {  "key3"  : true
+		  },
+		  "key6": {
+		    "key3": [123,23,45,[],
+		      [123,213,{"key10"  : 9081.2e-2}]],
+		    "key4": 123
+		  },
+		  "key3": 456
+		}   )";
+
+	JsonParser jp(str);
+	Json j1 = jp.parse();
+	Json j2 = std::move(j1);
+
+	printf("%s\n", j1.to_string().c_str());
+	printf("%s\n", j2.to_string().c_str());
+	printf("%s\n", j2["key6"]["key3"][4][2]["key10"].to_string().c_str());
+}
+
+void test03()
+{
+	JsonParser jp{};
+	jp.loadByFile("test/test.json");
+	Json j1 = jp.parse();
+
+	printf("%s\n\n", j1.to_string().c_str());
+	printf("%s\n\n", j1["packages"]["node_modules/@babel/helper-module-transforms"]["dependencies"]["@babel/types"].to_string().c_str());
+}
 
 
+void test04()
+{
+	auto str = R"({
+	    "null": null,
+	    "bool": false,
+	    "integer": 42,
+	    "decimal": 3.14,
+	    "negative": -10,
+	    "scientific_positive": 2.99792458e8,
+	    "scientific_negative_decimal": -1.23e-5,
+	    "string": "Hello, world!",
+	    "array": [1, "two", [3, "four"], {"key": "value"}],
+	    "object": {
+	      "number": 123,
+	      "text": "example",
+	      "nested_array": [77, 88, 99],
+	      "nested_object": {"inner_key": "inner_value"}
+	    }
+	    })";
+
+	JsonParser jp(str);
+	Json j1 = jp.parse();
+
+	printf("%s\n\n", j1.to_string().c_str());
+	printf("%s\n\n", j1["array"][2][1].get_string().c_str());
+	printf("%s\n\n", j1["array"][3]["key"].get_string().c_str());
+	printf("%d\n\n", j1["object"]["nested_array"][2].get_int());
+
+
+	j1.remove("array");
+	j1["object"]["nested_array"].remove(0);
+	printf("%s\n\n", j1.to_string().c_str());
+}
+
+
+void test05()
+{
+	auto str = R"({
+	    "null": null,
+	    "bool": false,
+	    "integer": 42,
+	    "decimal": 3.14,
+	    "negative": -10,
+	    "scientific_positive": 2.99792458e8,
+	    "scientific_negative_decimal": -1.23e-5,
+	    "string": "Hello, world!",
+	    "array": [1, "two", [3, "four"], {"key": "value"}],
+	    "object": {
+	      "number": 123,
+	      "text": "example",
+	      "nested_array": [77, 88, 99],
+	      "nested_object": {"inner_key": "inner_value"}
+	    }
+	    })";
+
+	JsonReader jr(str);
+
+	// printf("%s\n\n", jr.parse().to_string().c_str());
+	// printf("%s\n\n", jr["array"][2][1].parse().get_string().c_str());
+	// printf("%s\n\n", jr["array"][3]["key"].parse().get_string().c_str());
+	// printf("%d\n\n", jr["object"]["nested_array"][2].parse().get_int());
+	printf("%d\n\n", jr[0]["nested_array"][2]["asd"].parse().getType());
+}
 
 int main()
 {
 	{
-		// auto str = R"("\"qwe\"qwew\"")";
-		// auto str = R"([1,2,3])";
-		// auto str = R"({k1:123,k2:"abc",k3:true})";
-		auto str = R"({"k1":123,"k2":"abc","k3":true})";
+		test04();
 
-		JsonParser jp(str);
-
-		Json j1 = jp.parse();
-
-
-		printf("%s\n", j1.to_string().c_str());
+		// test05();
 
 		printf("\n\n");
 	}

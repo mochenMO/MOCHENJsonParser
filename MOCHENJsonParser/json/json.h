@@ -49,7 +49,7 @@
 #include <map>
 #include <sstream>    // std::stringstream
 #include <iomanip>    // std::setprecision 扩展 std::stringstream 存储的小数精度
-
+#include <stack>
 
 namespace mochen 
 {
@@ -157,10 +157,9 @@ public:
 
 class JsonParser
 {
-private:
+protected:
 	char* m_string;
 	int m_index;
-
 public:
 	JsonParser();
 	~JsonParser();
@@ -168,12 +167,12 @@ public:
 	JsonParser(const JsonParser&) = default;
 	JsonParser(JsonParser&&) = default;
 
-	JsonParser& operator=(const JsonParser&) noexcept = default;
-	JsonParser& operator=(JsonParser&&)  noexcept  = default;
-
 	JsonParser(const std::string& _string);
 	JsonParser(const char* _string);
 	JsonParser(std::string&& _string);
+
+	JsonParser& operator=(const JsonParser&) noexcept = default;
+	JsonParser& operator=(JsonParser&&)  noexcept  = default;
 	
 	void loadByString(const std::string& _string);
 	void loadByString(const char* _string);
@@ -191,43 +190,31 @@ public:
 	Json parse_array();        
 	Json parse_object();
 
-	Json stratParse();
+	bool isReadEntireFile();
+	bool save(const std::string& _path);
 };
 
 
 
-//class JsonParser_Only_Read
-//{
-//private:
-//	std::string m_str;
-//	int m_index;
-//
-//public:
-//	RParser();
-//	~RParser();
-//
-//	RParser(const RParser& _rParser);
-//	RParser(RParser&& _rParser);
-//	RParser(std::string _str);
-//
-//	RParser& operator=(const RParser& _rParser);
-//	RParser& operator=(RParser&& _rParser);
-//
-//	int	get_int();
-//	float get_float();
-//	bool get_bool();
-//	std::string get_string();
-//	std::vector<Json> get_array();
-//	std::map<std::string, Json> get_object();
-//
-//	Json& find(const std::string& _key);         // 会创建新的值，并用新建的值，处理空值的情况
-//	Json& find(int _index);
-//
-//	Json& operator[](const std::string& _key);   // 会创建新的值，并用新建的值，处理空值的情况
-//	Json& operator[](int _index);
-//
-//};
+class JsonReader : public JsonParser
+{
+public:
+	JsonReader();
+	~JsonReader();
 
+	JsonReader(const JsonReader&) = default;
+	JsonReader(JsonReader&&) = default;
+
+	JsonReader(const std::string& _string);
+	JsonReader(const char* _string);
+	JsonReader(std::string&& _string);
+
+	JsonReader& operator=(const JsonReader&) noexcept = default;
+	JsonReader& operator=(JsonReader&&)  noexcept = default;
+
+	JsonReader& operator[](const std::string _key);
+	JsonReader& operator[](int _index);
+};
 
 
 

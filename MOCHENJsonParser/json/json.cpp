@@ -659,7 +659,7 @@ Json& Json::getNullJson()
 
 
 JsonParser::JsonParser() : m_string(nullptr), m_index(0)
-{ }
+{}
 
 JsonParser::~JsonParser()
 {
@@ -713,7 +713,7 @@ bool JsonParser::loadByFile(const std::string& _path)
 {
 	FILE* fp;
 	if ((fp = fopen(_path.c_str(), "r")) == nullptr) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		printf("open file fild");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return false;
 	}
 
@@ -732,7 +732,7 @@ bool JsonParser::loadByFile(const std::string& _path)
 
 char JsonParser::get_next_token()
 {
-	if (m_string[m_index] == ' ' 
+	while (m_string[m_index] == ' ' 
 		|| m_string[m_index] == '\n' 
 		|| m_string[m_index] == '\n' 
 		|| m_string[m_index] == '\t') 
@@ -783,7 +783,7 @@ Json JsonParser::parse_null()
 		return Json(Json::Type::json_null);
 	}
 	else {
-		m_index = strlen(m_string);    // 将m_index设为最后
+		// m_index = strlen(m_string);         // 将m_index设为最后
 		printf("parse json_null failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return Json(Json::Type::json_null);
 	}
@@ -801,7 +801,7 @@ Json JsonParser::parse_bool()
 		return Json(false);
 	}
 	else {
-		m_index = strlen(m_string);    // 将m_index设为最后
+		// m_index = strlen(m_string);    // 将m_index设为最后
 		printf("parse json_bool failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 		return Json(Json::Type::json_null);
 	}
@@ -871,7 +871,6 @@ Json JsonParser::parse_number()
 		++m_index;
 	}
 	return Json(res);
-	
 }
 
 
@@ -928,7 +927,7 @@ Json JsonParser::parse_array()
 			break;
 		}
 	}
-	m_index = strlen(m_string);    // 将m_index设为最后
+	// m_index = strlen(m_string);    // 将m_index设为最后
 	printf("parse json_array failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 	return Json(Json::Type::json_null);
 }
@@ -975,21 +974,176 @@ Json JsonParser::parse_object()
 		++m_index;  // 跳过','
 		ch = get_next_token();
 	}
-	m_index = strlen(m_string);    // 将m_index设为最后
+	// m_index = strlen(m_string);    // 将m_index设为最后
 	printf("parse json_object failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
 	return Json(Json::Type::json_null);
 }
 
 
-
-Json JsonParser::stratParse()
+bool JsonParser::isReadEntireFile()
 {
+	get_next_token();  // 移动到'\0'
+	return (m_string[m_index] == '\0');
+}
+
+
+
+// =============================================================================================================
+// class JsonReader
+
+
+JsonReader::JsonReader()
+{
+	m_string = nullptr;
 	m_index = 0;
-	Json temp = std::move(parse());
+}
 
-	if (m_string[m_index] != '\0') {
-		printf("josn 文件格式不完整");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+JsonReader::~JsonReader()
+{
+	if (m_string != nullptr) {
+		free(m_string);  // 这里不能用delete
 	}
+	m_string = nullptr;
+}
 
-	return temp;
+
+
+JsonReader::JsonReader(const std::string& _string) : JsonParser(_string)
+{ }
+
+JsonReader::JsonReader(const char* _string) : JsonParser(_string)
+{ }
+
+JsonReader::JsonReader(std::string&& _string) : JsonParser(_string)
+{ }
+
+JsonReader& JsonReader::operator[](const std::string _key)
+{
+	// auto s = R"(
+	// {
+	// "k1":{"k2" : 754},
+	// "k4":{"k2" : {"k2":456, "k5":[1,2,3]}},
+	// "k2":123,
+	// }
+	// )";
+
+	char ch = get_next_token();
+	if (ch != '{') {
+		printf("read json_object failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		m_index = strlen(m_string);
+		return *this;
+	}
+	++m_index;    // 跳过开头的'{'
+	std::stack<char> stack;
+
+	while (true) {
+		ch = get_next_token();
+		switch(ch)
+		{
+		case '"': {
+			if (_key.compare(parse_string()) == 0) {   // 结束后m_index 指向 '"'的后面，但不知道指没指向':' 
+				ch = get_next_token(); // 取到':'
+				++m_index;             // 跳过':'
+				return *this;
+			}
+			ch = get_next_token(); // 取到':'
+			break;   // 退出时 m_string[m_index] = ':' 之后还要跳过':'
+		}
+		case '{': {
+			stack.push('{');
+			while (stack.empty() == false) {
+				++m_index;
+				ch = get_next_token();
+				if (ch == '}') {
+					stack.pop();
+				}
+				else if (ch == '{') {
+					stack.push('{');
+				}
+			}
+			break; // 退出时 m_string[m_index] = '}' 之后还要跳过'}'
+		}
+		case '[': {
+			stack.push('[');
+			while (stack.empty() == false) {
+				++m_index;
+				ch = get_next_token();
+				if (ch == ']') {
+					stack.pop();
+				}
+				else if (ch == '[') {
+					stack.push('[');
+				}
+			}
+			break; // 退出时 m_string[m_index] = ']' 之后还要跳过']'
+		}
+		default:
+			break;
+		}
+		++m_index;  // 跳过指定的字符
+	}
+	return *this;   // 此时 m_string[m_index] = '}'
+}
+
+
+JsonReader& JsonReader::operator[](int _index)
+{
+	 auto s = R"([1,2,3,[4,5,6],7])";
+
+	char ch = get_next_token();
+	if (ch != '[') {
+		printf("read json_array failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		m_index = strlen(m_string);
+		return *this;
+	}
+	++m_index;    // 跳过开头的'['
+	std::stack<char> stack;
+
+	while (true) {
+		ch = get_next_token();
+
+		if (_index == 0) {
+			return *this;
+		}
+
+		switch (ch)
+		{
+		case ',': {
+			--_index;
+			break;  // 退出时 m_string[m_index] = ',' 之后还要跳过','
+		}
+		case '{': {
+			stack.push('{');
+			while (stack.empty() == false) {
+				++m_index;
+				ch = get_next_token();
+				if (ch == '}') {
+					stack.pop();
+				}
+				else if (ch == '{') {
+					stack.push('{');
+				}
+			}
+			break; // 退出时 m_string[m_index] = '}' 之后还要跳过'}'
+		}
+		case '[': {
+			stack.push('[');
+			while (stack.empty() == false) {
+				++m_index;
+				ch = get_next_token();
+				if (ch == ']') {
+					stack.pop();
+				}
+				else if (ch == '[') {
+					stack.push('[');
+				}
+			}
+			break; // 退出时 m_string[m_index] = ']' 之后还要跳过']'
+		}
+		default:
+			break;
+		}
+		++m_index;  // 跳过指定的字符
+	}
+	return *this;   // 此时 m_string[m_index] = ']'
 }
