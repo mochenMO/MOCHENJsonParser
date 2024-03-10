@@ -186,10 +186,10 @@ Json& Json::operator[](const std::string& _key) // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓĞ±ß½ç¼ì²
 
 	// Óöµ½ json_null ºÍ json_object ¾Í´´½¨£¬Í¬Ê±±ÜÃâ²Ù×÷NullJson¶ÔÏó
 	if ((m_type != Type::json_object && m_type != Type::json_null)
-		|| this == &getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ğø»á·µ»ØNullJson)
+		|| this == &getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ğøµ÷ÓÃ»á·µ»ØNullJson)
 	{
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();
+		return getNullJson();   // ×¢Òâ£ºÕâÀï²»ÄÜÖ±½Ó·µ»ØJson(Type::json_null)£¬ÒòÎªÁ¬ĞøµÄÁ¬Ğøµ÷ÓÃĞŞ¸ÄËüµÄÀàĞÍ£¬×îÖÕ·µ»ØµÄ¾Í²»ÊÇÕæÕıNullJsonÁË
 	}
 	if (m_type == Type::json_null) {
 		// m_type = Type::json_object;
@@ -217,10 +217,10 @@ Json& Json::operator[](int _index)             // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓĞ±ß½ç¼ì²é
 
 	// Óöµ½ json_null ºÍ json_array ¾Í´´½¨£¬Í¬Ê±±ÜÃâ²Ù×÷NullJson¶ÔÏó
 	if ((m_type != Type::json_array && m_type != Type::json_null)
-		|| this == &getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ğø»á·µ»ØNullJson)
+		|| this == &getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ğøµ÷ÓÃ»á·µ»ØNullJson)
 	{
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();
+		return getNullJson();   // ×¢Òâ£ºÕâÀï²»ÄÜÖ±½Ó·µ»ØJson(Type::json_null)£¬ÒòÎªÁ¬ĞøµÄÁ¬Ğøµ÷ÓÃĞŞ¸ÄËüµÄÀàĞÍ£¬×îÖÕ·µ»ØµÄ¾Í²»ÊÇÕæÕıNullJsonÁË
 	}
 	if (m_type == Type::json_null) {
 		// m_type = Type::json_array;
@@ -271,8 +271,11 @@ bool Json::get_bool()
 {
 	if (m_type != Type::json_bool) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return false;
 	}
-	return m_value.m_bool;
+	else {
+		return m_value.m_bool;
+	}
 }
 
 
@@ -280,16 +283,23 @@ int	Json::get_int()
 {
 	if (m_type != Type::json_int) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return 0;
 	}
-	return m_value.m_int;
+	else {
+		return m_value.m_int;
+	}
 }
 
 double Json::get_double()
 {
 	if (m_type != Type::json_double) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return 0.0;
 	}
-	return m_value.m_double;
+	else {
+		return m_value.m_double;
+	}
+	
 }
 
 
@@ -297,24 +307,34 @@ std::string Json::get_string()
 {
 	if (m_type != Type::json_string) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return "";
 	}
-	return *m_value.m_string;
+	else {
+		return *m_value.m_string;
+	}
+	
 }
 
 std::vector<Json> Json::get_array()
 {
 	if (m_type != Type::json_array) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return std::vector<Json>{};
+	}	
+	else {
+		return *m_value.m_array;
 	}
-	return *m_value.m_array;
 }
 
 std::map<std::string, Json> Json::get_object()
 {
 	if (m_type != Type::json_object) {
 		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		return std::map<std::string, Json>{};
 	}
-	return *m_value.m_object;
+	else {
+		return *m_value.m_object;
+	}
 }
 
 
@@ -474,7 +494,7 @@ std::string Json::to_string()
 		break;
 	case Json::Type::json_double:  // 123.456
 		// ss << m_value.m_double;   // ssÄ¬ÈÏÖ»´æÁ½Î»Ğ¡Êı
-		ss << std::fixed << std::setprecision(8) << m_value.m_double;;  // #include <iomanip>  
+		ss << std::fixed << std::setprecision(8) << m_value.m_double;;  // ÒªÏÈÓÃstd::fixedÈ¡ÏûÄ¬ÈÏÊä³ö3Î»Ğ¡Êı
 		break;
 	case Json::Type::json_string:  // "abcdef"
 		ss << "\"" << *m_value.m_string << "\"";
@@ -611,7 +631,7 @@ void Json::auxiliary_deep_copy(const Json& _json)
 
 Json& Json::getNullJson()
 {
-	static Json null_json{};    // ¾²Ì¬±äÁ¿µÄ´´½¨£¬Ó¦ÔÚ³ÉÔ±º¯ÊıÖĞ½øĞĞ
+	static Json null_json{};    // ²»Í¬ÓÚJson{}¸Ã±äÁ¿ÓÃÓÚ´¦ÀíËÑÑ°½á¹ûÎª¿ÕµÄÇé¿ö£¨¾²Ì¬±äÁ¿µÄ´´½¨£¬Ó¦ÔÚ³ÉÔ±º¯ÊıÖĞ½øĞĞ£©
 	if (null_json.getType() != Type::json_null) {   // ÖØÖÃ»úÖÆ£¬·ÀÖ¹ÓÃ»§´íÎóµÄ½øĞĞ¸³Öµ²Ù×÷
 		null_json = Json{};
 	}
@@ -1010,7 +1030,7 @@ void JsonParser::clear()
 	m_index = 0;
 }
 
-bool JsonParser::isReadEntireFile()
+bool JsonParser::isReadEndOfFile()
 {
 	get_next_token();  // ÒÆ¶¯µ½'\0'
 	return (m_string[m_index] == '\0');
@@ -1064,7 +1084,7 @@ JsonReader& JsonReader::operator[](const std::string _key)
 	++m_index;    // Ìø¹ı¿ªÍ·µÄ'{'
 	std::stack<char> stack;
 
-	while (true) {
+	while (m_string[m_index] != '\0') {
 		ch = get_next_token();
 		switch(ch)
 		{
@@ -1127,7 +1147,7 @@ JsonReader& JsonReader::operator[](int _index)
 	++m_index;    // Ìø¹ı¿ªÍ·µÄ'['
 	std::stack<char> stack;
 
-	while (true) {
+	while (m_string[m_index] != '\0') {
 		ch = get_next_token();
 
 		if (_index == 0) {
@@ -1177,7 +1197,7 @@ JsonReader& JsonReader::operator[](int _index)
 }
 
 
-Json JsonReader::startParse()
+Json JsonReader::startRead()
 {
 	if (m_string == nullptr) {
 		printf("m_string is nullptr");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$

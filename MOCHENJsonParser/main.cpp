@@ -145,6 +145,7 @@ void test04()
 	Json j2 = jp1.parse();
 
 	printf("%s\n\n", j2.to_string().c_str());
+
 	printf("\n\n");
 }
 
@@ -155,7 +156,7 @@ void test05()
 	    "null": null,
 	    "bool": false,
 	    "integer": 42,
-	    "decimal": 3.14,
+	    "decimal": 3.143123,
 	    "negative": -10,
 	    "scientific_positive": 2.99792458e8,
 	    "scientific_negative_decimal": -1.23e-5,
@@ -171,24 +172,22 @@ void test05()
 
 	JsonReader jr(str);
 
-	printf("%s\n\n", jr.startParse().to_string().c_str());
-	printf("%s\n\n", jr["array"][2][1].startParse().get_string().c_str());
-	printf("%s\n\n", jr["array"][3]["key"].startParse().get_string().c_str());
-	printf("%d\n\n", jr["object"]["nested_array"][2].startParse().get_int());
-	// printf("%d\n\n", jr[0]["nested_array"][2]["asd"].startParse().getType());  // 没找到返回空值
+	printf("%s\n\n", jr.startRead().to_string().c_str());
+	printf("%s\n\n", jr["array"][2][1].startRead().get_string().c_str());
+	printf("%s\n\n", jr["array"][3]["key"].startRead().get_string().c_str());
+	printf("%d\n\n", jr["object"]["nested_array"][2].startRead().get_int());
+
+	printf("%d\n\n", jr[0]["nested_array"]["test"][2].startRead().getType());  // 索引"test"有问题，没找到，故返回空值
+	printf("%d\n\n", jr["array"][10].startRead().getType());                   // 索引10有问题，没找到，故返回空值
+
 	printf("\n\n");
 }
 
 int main()
 {
 	{
-		// test04();
-		// test05();
-
-		JsonParser jp;
-		jp.loadByString("asdsa");
-		jp.parse();
-
+		test04();
+		test05();
 
 		printf("\n\n");
 	}

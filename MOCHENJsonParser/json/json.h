@@ -192,7 +192,7 @@ public:
 	Json parse_object();
 
 	void clear();
-	bool isReadEntireFile();
+	bool isReadEndOfFile();
 };
 
 
@@ -213,7 +213,7 @@ public:
 	JsonReader& operator=(const JsonReader&) noexcept = delete;
 	JsonReader& operator=(JsonReader&&)  noexcept = delete;
 
-	Json startParse();
+	Json startRead();
 
 	JsonReader& operator[](const std::string _key);
 	JsonReader& operator[](int _index);
