@@ -139,9 +139,9 @@ void test04()
 
 
 
-	j1.save("123.json");
+	j1.save("test/save.json");
 	JsonParser jp1{};
-	jp1.loadByFile("123.json");
+	jp1.loadByFile("test/save.json");
 	Json j2 = jp1.parse();
 
 	printf("%s\n\n", j2.to_string().c_str());

@@ -27,4 +27,8 @@
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="test\test.json" />
+    <None Include="test\save.json" />
+  </ItemGroup>
 </Project>
