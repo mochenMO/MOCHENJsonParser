@@ -5,30 +5,19 @@ using namespace mochen::log;
 // =============================================================================================================
 // 全局区
 
-// 创建全局的 defauleLogEventManager （注意 LogEventManager 是个单例）
-LogEventManager defauleLogEventManager{};
-
-// 全局函数
-std::shared_ptr<LogAppender> defauleLogAppender = std::make_shared<ConsoleLogAppender>();
-
-inline std::shared_ptr<LogAppender>* mochen::log::getDefaultLogAppender() 
+// 创建全局的 defauleLogEventManager (注意：定义全局函数时也要加上命名空间)
+inline LogEventManager* mochen::log::getDefaultLogEventManager() // 注意在C++11及以上版本标准中，规定静态局部变量初始化的线程安全性
 {
-	// static std::shared_ptr<LogAppender> defauleLogAppender = std::make_shared<ConsoleLogAppender>();
-	// 注意不用static的是因为，在多线程中同时创建static的是有的风险的。
-	return &defauleLogAppender;
+	static LogEventManager defauleLogEventManager{};
+	return &defauleLogEventManager;
 }
 
-
 // 全局函数
-Logger defauleLogger("defauleLogger", LogLevel::debug, (*getDefaultLogAppender()));
-
 inline Logger* mochen::log::getDefaultLogger()
 {
-	// static Logger defauleLogger("defauleLogger", LogLevel::debug, (*getDefaultLogAppender()));
-	// 注意不用static的是因为，在多线程中同时创建static的是有的风险的。
+	static Logger defauleLogger("defauleLogger", LogLevel::debug, std::make_shared<ConsoleLogAppender>());
 	return &defauleLogger;
 }
-
 
 
 // 声明全局的 logLevelString
@@ -38,27 +27,9 @@ const char* logLevelString[5] = { "debug","info","warn","error","fatal" };
 // =============================================================================================================
 // class LogAppender
 
-LogAppender::LogAppender() : m_type(Type::withoutLogAppender)
-{    
-
-}
-
-
-inline LogAppender::Type LogAppender::getType()
-{
-	return m_type;
-}
-
-
-
 
 // =============================================================================================================
 // class ConsoleLogAppender
-
-ConsoleLogAppender::ConsoleLogAppender(LogLevel _level)
-{
-	m_type = Type::ConsoleLogAppender;
-}
 
 void ConsoleLogAppender::log(const char* _massage)
 {
@@ -71,16 +42,14 @@ void ConsoleLogAppender::log(const char* _massage)
 
 FileLogAppender::FileLogAppender()
 {
-	m_type = Type::FileLogAppender;
 	m_filename = "";
 	m_fp = nullptr;
 	m_maxSize = M_FILEMAXSIZE;
 }
 
 
-FileLogAppender::FileLogAppender(const std::string& _filename, int _maxSize, LogLevel _level)
+FileLogAppender::FileLogAppender(const std::string& _filename, int _maxSize)
 {
-	m_type = Type::FileLogAppender;
 	m_maxSize = _maxSize;
 	m_filename = _filename;
 
@@ -88,7 +57,7 @@ FileLogAppender::FileLogAppender(const std::string& _filename, int _maxSize, Log
 	temp += ".txt";
 
 	if ((m_fp = fopen(temp.c_str(), "a")) == nullptr) {
-		throw std::logic_error("filded to open the file");    // std::logic_error异常对象中会自动包含文件名和行号等调试信息
+		throw std::logic_error("open file filded");    // std::logic_error异常对象中会自动包含文件名和行号等调试信息
 	}
 }
 
@@ -124,7 +93,7 @@ void FileLogAppender::operator=(FileLogAppender&& _value) noexcept
 void FileLogAppender::log(const char* _message)
 {
 	if (m_fp == nullptr) {
-		throw std::logic_error("There is no initialization m_file, m_file is nullptr");
+		throw std::logic_error("null pointer: <m_fp> is nullptr");
 	}
 
 	if (getFileSize() >= m_maxSize) {
@@ -153,7 +122,7 @@ void FileLogAppender::open(const std::string& _filename)
 	temp += ".txt";
 
 	if ((m_fp = fopen(temp.c_str(), "a")) == nullptr) {
-		throw std::logic_error("filded to open the file");    // std::logic_error异常对象中会自动包含文件名和行号等调试信息
+		throw std::logic_error("open file filded");    // std::logic_error异常对象中会自动包含文件名和行号等调试信息
 	}
 }
 
@@ -185,7 +154,7 @@ void FileLogAppender::scrolling()
 		m_fp = nullptr;
 	}
 	else {
-		throw std::logic_error("There is no initialization m_file, m_file is nullptr");
+		throw std::logic_error("null pointer: <m_fp> is nullptr");
 	}
 
 	std::string temp = m_filename;
@@ -209,7 +178,7 @@ void FileLogAppender::scrolling()
 	temp += ".txt";
 
 	if ((m_fp = fopen(temp.c_str(), "a")) == nullptr) {
-		throw std::logic_error("filded to open the file");    // std::logic_error异常对象中会自动包含文件名和行号等调试信息
+		throw std::logic_error("open file failded");    // std::logic_error异常对象中会自动包含文件名和行号等调试信息
 	}
 }
 
@@ -283,7 +252,9 @@ void LogEventManager::clearLogAppenderListMap()
 
 void LogEventManager::addAppender(std::string _loggername, std::shared_ptr<LogAppender> _appender)
 {
-	(*m_LogAppenderListMap)[_loggername].push_back(_appender);
+	m_mutex.lock();  // 注意：千万别忘记加锁因为树结构有个元素之间有关联性它不是独立的 ！！！！
+	(*m_LogAppenderListMap)[_loggername].push_back(_appender);   
+	m_mutex.unlock();
 }
 
 
@@ -379,14 +350,15 @@ void LogEventManager::addLogEvent(LogEvent _logEvent)
 
 Logger::Logger(const std::string& _loggername, LogLevel _level, std::shared_ptr<LogAppender> _appender)
 {
-	if (defauleLogEventManager.isFindLogger(_loggername) == true) {
-		throw std::logic_error("The _loggername already exists");
+	// 注意 getDefaultLogEventManager() 这段代码保证了 LogEventManager 在 Logger 之前创建，确保了 LogEventManager 最后才销毁
+	if (getDefaultLogEventManager()->isFindLogger(_loggername) == true) {
+		throw std::logic_error("loggername must be unqiue: <_loggername> is already exists");
 	}
 	
 	m_level = _level;
 
 	m_loggername = _loggername;
-	defauleLogEventManager.addAppender(_loggername, _appender);
+	getDefaultLogEventManager()->addAppender(_loggername, _appender);
 
 	return;
 }
@@ -413,7 +385,7 @@ void Logger::log(LogLevel _level, const char* _filename, int _line, const char* 
 	data.m_line = _line;
 	data.m_content = buffer;
 
-	defauleLogEventManager.addLogEvent(data);
+	getDefaultLogEventManager()->addLogEvent(data);
 }
 
 inline std::string Logger::getLoggerName()
@@ -423,7 +395,7 @@ inline std::string Logger::getLoggerName()
 
 bool Logger::addAppender(std::shared_ptr<LogAppender> _appender)
 {
-	defauleLogEventManager.addAppender(m_loggername, _appender);
+	getDefaultLogEventManager()->addAppender(m_loggername, _appender);
 	return true;
 }
 

@@ -1,3 +1,14 @@
+/*// 介绍与说明
+* 1.注意用getBool, getInt这类函数获取值时，如果类型不匹配则输出的值是未知的。
+* 2.面对损坏数据的情况，解析器尽京可能的把正确的数据解析出来，请留意输出的日志
+* 
+* 
+*/
+
+
+
+
+
 /*// 还未解决的问题
 * 1.怎么解决没找到的问题，
 *
@@ -43,6 +54,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "../log/log.h"
 
 #include <string>
 #include <vector>
@@ -107,8 +119,8 @@ public:
 	void operator=(const std::string& _value);
 	void operator=(const char* _value);          // 写一个const char*的重载版本，解决const char*优先匹配bool的问题
 
-	bool isHaveValue(const std::string& _key);
-	bool isHaveValue(int _index);
+	bool isHaveValue(const std::string& _key);  
+	bool isHaveValue(int _index);               
 
 	Json& operator[](const std::string& _key);   // 通常[]运算符重载函数，没有边界检查且会创建新值。
 	Json& operator[](int _index);               
@@ -116,19 +128,20 @@ public:
 	Json& at(const std::string& _key);           // 通常at函数有边界检查且不会创建新值
 	Json& at(int _index);
 
-	bool get_bool();                             // 注意，当类型不匹配时输出的值是未知的
-	int	get_int();
-	double get_double();                         
-	std::string get_string();                     // 注意返回值类型
-	std::vector<Json> get_array();
-	std::map<std::string, Json> get_object();
+	bool getBool();   // 注意，当类型不匹配时输出的值是未知的
+	int	getInt();                              
+	double getDouble();                        
+	std::string getString();    // 注意返回值类型
+	std::vector<Json> getArray();              
+	std::map<std::string, Json> getObject();   
 
-	bool is_null();
-	bool is_bool();
-	bool is_int();
-	bool is_double();
-	bool is_array();
-	bool is_object();
+	bool isNull();
+	bool isBool();   
+	bool isInt();    
+	bool isDouble(); 
+	bool isString(); 
+	bool isArray();  
+	bool isObject();
 
 	bool append(const Json& _json);      // 操作对象是 m_value.m_array
 	bool append(Json&& _json) noexcept;  // 操作对象是 m_value.m_array
@@ -141,17 +154,11 @@ public:
 	bool remove(const std::string& _key);
 	bool remove(int _index);
 
-	std::string to_string();
-	Type getType();
+	std::string toString();
+	Type getType();     
 	void clear();
-	void auxiliary_deep_copy(const Json& _json);
-	Json& getNullJson();                                     // 用于返回空值，但有缺陷不是很安全
-	bool save(const std::string& _path);
-
-	//operator bool&();
-	//operator int&();     // 类型转换运算符重载是个陷阱，用一点用上的便利性换安全性和不确定性得不偿失
-	//operator double&();
-	//operator std::string&();
+	void deepCopy(const Json& _json);  
+	bool save(const std::string& _filename);
 };
 
 
@@ -175,28 +182,28 @@ public:
 	JsonParser& operator=(const JsonParser&) noexcept = delete;
 	JsonParser& operator=(JsonParser&&)  noexcept  = delete;
 	
-	void loadByString(const std::string& _string);
-	void loadByString(const char* _string);
-	void loadByString(std::string&& _string);
+	void loadByString(const std::string& _string);   
+	void loadByString(const char* _string);            
+	void loadByString(std::string&& _string);       
 
-	bool loadByFile(const std::string& _path);
+	bool open(const std::string& _filename);
 	
-	char get_next_token();
+	char getNextValidChar();
 
 	Json parse();
-	Json parse_null();
-	Json parse_bool();
-	Json parse_number();
-	std::string parse_string();  // 不返回Json是因为josn_object的key也是std::string，如果返回Json还要申请内存并释放
-	Json parse_array();        
-	Json parse_object();
+	Json parseNull();            
+	Json parseBool();            
+	Json parseNumber();          
+	std::string parseString();  // 不返回Json是因为josn_object的key也是std::string，如果返回Json还要申请内存并释放
+	Json parseArray();           
+	Json parseObject();          
 
 	void clear();
-	bool isReadEndOfFile();
+	bool isReadEndOfFile();    
 };
 
 
-// 使用的前提条件：保证Josn数据是正确性
+// 使用的前提条件：保证Josn文件中的数据是正确的可读的
 class JsonReader : public JsonParser
 {
 public:
@@ -213,7 +220,7 @@ public:
 	JsonReader& operator=(const JsonReader&) noexcept = delete;
 	JsonReader& operator=(JsonReader&&)  noexcept = delete;
 
-	Json startRead();
+	Json startRead(); 
 
 	JsonReader& operator[](const std::string _key);
 	JsonReader& operator[](int _index);

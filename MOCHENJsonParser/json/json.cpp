@@ -1,7 +1,36 @@
 #include "json.h"
 
-
 using namespace mochen::json;
+using namespace mochen;
+
+// =============================================================================================================
+// È«¾ÖÇø
+
+// ´´½¨ Logger Àà
+log::Logger* createJsonLogger()   // ³õÊ¼»¯ JsonLogger µÄº¯Êý (×¢Òâ¸Ãº¯ÊýÖ»ÄÜ±»ÔËÐÐÒ»´Î)
+{
+	static log::Logger JsonLogger("JsonLogger");
+	std::shared_ptr<log::FileLogAppender> fileLogAppender = std::make_shared<log::FileLogAppender>("json");
+	JsonLogger.addAppender(fileLogAppender);
+	return &JsonLogger;
+}
+
+log::Logger* getJsonLogger()  // »ñµÃJsonLoggerµÄº¯Êý£¬Ð´¸Ãº¯ÊýÊÇÎªÁËÎª¶àÎÄ¼þ¹²Ïí¸ÃJsonLogger×ö×¼±¸
+{
+	static log::Logger* temp = createJsonLogger();
+	return temp;
+}
+
+log::Logger* JsonLogger = getJsonLogger();
+
+
+// ´´½¨Ò»¸ö¿ÕµÄJsonÓÃÓÚ´¦ÀíËÑÑ°½á¹ûÎª¿ÕµÄÇé¿ö
+inline Json* getNullJson()
+{
+	static Json nullJson{};
+	return &nullJson;
+}
+
 
 // =============================================================================================================
 // class Json
@@ -18,7 +47,7 @@ Json::~Json()
 
 Json::Json(const Json& _json)
 {
-	auxiliary_deep_copy(_json);
+	deepCopy(_json);
 }
 
 
@@ -99,7 +128,7 @@ Json::Json(Type _type)
 void Json::operator=(const Json& _json)
 {
 	 clear();  // ¸³ÖµÔËËã·ûÖØÔØµÄÊµÏÖ¹ý³Ì£¬ÏÈÇå¿ÕÔ­ÓÐµÄÊý¾ÝºÍ×ÊÔ´£¬ÔÙ½øÐÐ¸³Öµ 
-	 auxiliary_deep_copy(_json);
+	 deepCopy(_json);
 }
 
 void Json::operator=(Json&& _json) noexcept
@@ -159,7 +188,7 @@ void Json::operator=(const char* _value)
 bool Json::isHaveValue(const std::string& _key)
 {
 	if (m_type != Type::json_object) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::isHaveValue(): type error, Jsonis not a json_object type");
 		return false;
 	}
 	return (m_value.m_object->find(_key) != m_value.m_object->end());
@@ -169,7 +198,7 @@ bool Json::isHaveValue(const std::string& _key)
 bool Json::isHaveValue(int _index)
 {
 	if (m_type != Type::json_array) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::isHaveValue(): type error, Json is not a json_array type");
 		return false;
 	}
 	return (m_value.m_object->size() > _index);
@@ -177,22 +206,14 @@ bool Json::isHaveValue(int _index)
 
 Json& Json::operator[](const std::string& _key) // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²éÇÒ»á´´½¨ÐÂÖµ¡£ 
 {
-	//if (m_type != Type::json_object) {
-	//	printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-	//	return getNullJson();
-	//}
-	//return (*(m_value.m_object))[_key];        // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
-
-
 	// Óöµ½ json_null ºÍ json_object ¾Í´´½¨£¬Í¬Ê±±ÜÃâ²Ù×÷NullJson¶ÔÏó
 	if ((m_type != Type::json_object && m_type != Type::json_null)
-		|| this == &getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ðøµ÷ÓÃ»á·µ»ØNullJson)
+		|| this == getNullJson())     // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ðøµ÷ÓÃ»á·µ»ØNullJson)
 	{
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();   // ×¢Òâ£ºÕâÀï²»ÄÜÖ±½Ó·µ»ØJson(Type::json_null)£¬ÒòÎªÁ¬ÐøµÄÁ¬Ðøµ÷ÓÃÐÞ¸ÄËüµÄÀàÐÍ£¬×îÖÕ·µ»ØµÄ¾Í²»ÊÇÕæÕýNullJsonÁË
+		logger_error(*JsonLogger, "Json::operator[](): type error, Json is not a json_object type");
+		return *getNullJson();        // ×¢Òâ£ºÕâÀï²»ÄÜÖ±½Ó·µ»ØJson(Type::json_null)£¬ÒòÎªÁ¬ÐøµÄÁ¬Ðøµ÷ÓÃÐÞ¸ÄËüµÄÀàÐÍ£¬×îÖÕ·µ»ØµÄ¾Í²»ÊÇÕæÕýNullJsonÁË
 	}
 	if (m_type == Type::json_null) {
-		// m_type = Type::json_object;
 		(*this) = Json(Type::json_object);
 	}
 	return (*(m_value.m_object))[_key];
@@ -200,30 +221,16 @@ Json& Json::operator[](const std::string& _key) // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²
 }
 
 
-Json& Json::operator[](int _index)             // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²éÇÒ»á´´½¨ÐÂÖµ¡£
+Json& Json::operator[](int _index) // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²éÇÒ»á´´½¨ÐÂÖµ¡£
 {
-	//if (m_type != Type::json_array) {
-	//	printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-	//	return getNullJson();
-	//}
-	//int size = m_value.m_array->size();
-	//if (_index >= size) {
-	//	for (int i = size; i <= _index; ++i) {
-	//		m_value.m_array->push_back(Json{});
-	//	}
-	//}
-	//return (*(m_value.m_array))[_index];
-
-
 	// Óöµ½ json_null ºÍ json_array ¾Í´´½¨£¬Í¬Ê±±ÜÃâ²Ù×÷NullJson¶ÔÏó
 	if ((m_type != Type::json_array && m_type != Type::json_null)
-		|| this == &getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ðøµ÷ÓÃ»á·µ»ØNullJson)
+		|| this == getNullJson())  // ·ÀÖ¹²Ù×÷NullJson¶ÔÏó´Ó¶øÓ°Ïì·µ»ØÖµ (´íÎóµÄÁ¬Ðøµ÷ÓÃ»á·µ»ØNullJson)
 	{
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();   // ×¢Òâ£ºÕâÀï²»ÄÜÖ±½Ó·µ»ØJson(Type::json_null)£¬ÒòÎªÁ¬ÐøµÄÁ¬Ðøµ÷ÓÃÐÞ¸ÄËüµÄÀàÐÍ£¬×îÖÕ·µ»ØµÄ¾Í²»ÊÇÕæÕýNullJsonÁË
+		logger_error(*JsonLogger, "Json::operator[](): type error, Json is not a json_array type");
+		return *getNullJson();   // ×¢Òâ£ºÕâÀï²»ÄÜÖ±½Ó·µ»ØJson(Type::json_null)£¬ÒòÎªÁ¬ÐøµÄÁ¬Ðøµ÷ÓÃÐÞ¸ÄËüµÄÀàÐÍ£¬×îÖÕ·µ»ØµÄ¾Í²»ÊÇÕæÕýNullJsonÁË
 	}
 	if (m_type == Type::json_null) {
-		// m_type = Type::json_array;
 		(*this) = Json(Type::json_array);
 	}
 	int size = m_value.m_array->size();
@@ -232,8 +239,6 @@ Json& Json::operator[](int _index)             // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²é
 			m_value.m_array->push_back(Json{});
 		}
 	}
-
-	// printf("%d json_array\n", (int)(*(m_value.m_array))[_index].getType());
 	return (*(m_value.m_array))[_index];
 }
 
@@ -241,13 +246,13 @@ Json& Json::operator[](int _index)             // Í¨³£[]ÔËËã·ûÖØÔØ£¬Ã»ÓÐ±ß½ç¼ì²é
 Json& Json::at(const std::string& _key)   // Í¨³£atº¯ÊýÓÐ±ß½ç¼ì²éµ«²»»á´´½¨ÐÂÖµ  
 {
 	if (m_type != Type::json_object) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();
+		logger_error(*JsonLogger, "Json::at(): type error, Json is not a json_object type");
+		return *getNullJson();
 	}
 	auto it = m_value.m_object->find(_key);
 	if (it == m_value.m_object->end()) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();
+		logger_error(*JsonLogger, "Json::at(): valid key, not found this key <%s>", _key.c_str());
+		return *getNullJson();
 	}
 	return it->second;
 }
@@ -256,21 +261,21 @@ Json& Json::at(const std::string& _key)   // Í¨³£atº¯ÊýÓÐ±ß½ç¼ì²éµ«²»»á´´½¨ÐÂÖµ
 Json& Json::at(int _index)  // Í¨³£atº¯ÊýÓÐ±ß½ç¼ì²éµ«²»»á´´½¨ÐÂÖµ  
 {
 	if (m_type != Type::json_array) {
-		exit(0), printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();
+		logger_error(*JsonLogger, "Json::at(): type error, Json is not a json_array type");
+		return *getNullJson();
 	}
 	int size = m_value.m_array->size();
 	if (_index < 0 || _index >= size) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-		return getNullJson();
+		logger_error(*JsonLogger, "Json::at(): value out of range <%d>", _index);
+		return *getNullJson();
 	}
 	return (*(m_value.m_array))[_index];
 }
 
-bool Json::get_bool()
+bool Json::getBool()
 {
 	if (m_type != Type::json_bool) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::getBool(): type error, Json is not a json_bool type");
 		return false;
 	}
 	else {
@@ -279,10 +284,10 @@ bool Json::get_bool()
 }
 
 
-int	Json::get_int()
+int	Json::getInt()
 {
 	if (m_type != Type::json_int) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::getInt(): type error, Json is not a json_int type");
 		return 0;
 	}
 	else {
@@ -290,10 +295,10 @@ int	Json::get_int()
 	}
 }
 
-double Json::get_double()
+double Json::getDouble()
 {
 	if (m_type != Type::json_double) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::getDouble(): type error, Json is not a json_double type");
 		return 0.0;
 	}
 	else {
@@ -303,22 +308,21 @@ double Json::get_double()
 }
 
 
-std::string Json::get_string()
+std::string Json::getString()
 {
 	if (m_type != Type::json_string) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::getString(): type error, Json is not a json_string type");
 		return "";
 	}
 	else {
 		return *m_value.m_string;
 	}
-	
 }
 
-std::vector<Json> Json::get_array()
+std::vector<Json> Json::getArray()
 {
 	if (m_type != Type::json_array) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::getArray(): type error, Json is not a json_array type");
 		return std::vector<Json>{};
 	}	
 	else {
@@ -326,10 +330,10 @@ std::vector<Json> Json::get_array()
 	}
 }
 
-std::map<std::string, Json> Json::get_object()
+std::map<std::string, Json> Json::getObject()
 {
 	if (m_type != Type::json_object) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::getObject(): type error, Json is not a json_object type");
 		return std::map<std::string, Json>{};
 	}
 	else {
@@ -337,19 +341,19 @@ std::map<std::string, Json> Json::get_object()
 	}
 }
 
-
-bool Json::is_null() { return m_type == Type::json_null; }
-bool Json::is_bool() { return m_type == Type::json_bool; }
-bool Json::is_int() { return m_type == Type::json_int; }
-bool Json::is_double() { return m_type == Type::json_double; }
-bool Json::is_array() { return m_type == Type::json_array; }
-bool Json::is_object() { return m_type == Type::json_object; }
+bool Json::isNull() { return m_type == Type::json_null; }
+bool Json::isBool() { return m_type == Type::json_bool; }
+bool Json::isInt() { return m_type == Type::json_int; }
+bool Json::isDouble() { return m_type == Type::json_double; }
+bool Json::isString() { return m_type == Type::json_string; }
+bool Json::isArray() { return m_type == Type::json_array; }
+bool Json::isObject() { return m_type == Type::json_object; }
 
 
 bool Json::append(const Json& _json)
 {
 	if (m_type != Type::json_array) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::append(): type error, Json is not a json_array type");
 		return false;
 	}
 	m_value.m_array->push_back(_json);
@@ -359,7 +363,7 @@ bool Json::append(const Json& _json)
 bool Json::append(Json&& _json) noexcept
 {
 	if (m_type != Type::json_array) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::append(): type error, Json is not a json_array type");
 		return false;
 	}
 	m_value.m_array->push_back(std::move(_json));
@@ -370,12 +374,10 @@ bool Json::append(Json&& _json) noexcept
 bool Json::insert(int _index, const Json& _json)
 {
 	if (m_type == Type::json_null) {
-		// m_type = Type::json_array;
-		// m_value.m_array = new std::vector<Json>();
 		(*this) = Json(Type::json_array);
 	}
 	else if (m_type != Type::json_array) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::insert(): type error, Json is not a json_array type");
 		return false;
 	}
 	int size = m_value.m_array->size();
@@ -392,12 +394,10 @@ bool Json::insert(int _index, const Json& _json)
 bool Json::insert(int _index, Json&& _json) noexcept
 {
 	if (m_type == Type::json_null) {
-		// m_type = Type::json_array;
-		// m_value.m_array = new std::vector<Json>();
 		(*this) = Json(Type::json_array);
 	}
 	else if (m_type != Type::json_array) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::insert(): type error, Json is not a json_array type");
 		return false;
 	}
 	int size = m_value.m_array->size();
@@ -416,12 +416,10 @@ bool Json::insert(int _index, Json&& _json) noexcept
 bool Json::insert(const std::string& _key, const Json& _json)
 {
 	if (m_type == Type::json_null) {
-		// m_type = Type::json_object;
-		// m_value.m_object = new std::map<std::string, Json>();
 		(*this) = Json(Type::json_object);
 	}
 	else if (m_type != Type::json_object) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::insert(): type error, Json is not a json_object type");
 		return false;
 	}
 	(*(m_value.m_object))[_key] = _json;   // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
@@ -431,12 +429,10 @@ bool Json::insert(const std::string& _key, const Json& _json)
 bool Json::insert(const std::string& _key, Json&& _json) noexcept
 {
 	if (m_type == Type::json_null) {
-		// m_type = Type::json_object;
-		// m_value.m_object = new std::map<std::string, Json>();
 		(*this) = Json(Type::json_object);
 	}
 	else if (m_type != Type::json_object) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::insert(): type error, Json is not a json_object type");
 		return false;
 	}
 	(*(m_value.m_object))[_key] = std::move(_json);   // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
@@ -447,12 +443,12 @@ bool Json::insert(const std::string& _key, Json&& _json) noexcept
 bool Json::remove(const std::string& _key) 
 {
 	if (m_type != Type::json_object) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::remove(): type error, Json is not a json_object type");	
 		return false;
 	}
 	auto it = m_value.m_object->find(_key);
 	if (it == m_value.m_object->end()) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::remove(): valid key, not found this key <%s>", _key.c_str());
 		return false;
 	}
 	it->second.clear();
@@ -464,12 +460,12 @@ bool Json::remove(const std::string& _key)
 bool Json::remove(int _index)
 {
 	if (m_type != Type::json_array) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::remove(): type error, Json is not a json_array type");
 		return false;
 	}
 	int size = m_value.m_array->size();
 	if (_index < 0 || _index >= size) {
-		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::remove(): value out of range <%d>", _index);
 		return false;
 	}
 	(*(m_value.m_array))[_index].clear();
@@ -478,7 +474,7 @@ bool Json::remove(int _index)
 }
 
 
-std::string Json::to_string()
+std::string Json::toString()
 {
 	std::stringstream ss;   // ÄÚ²¿<<ÔËËã·ûµÄÖØÔØº¯Êý£¬¿ÉÒÔÁ¬½Ó¸÷ÖÖÀàÐÍµÄÊý¾Ý
 	switch (m_type)
@@ -486,27 +482,27 @@ std::string Json::to_string()
 	case Type::json_null:   // null
 		ss << "null";
 		break;
-	case Json::Type::json_bool:    // true false
+	case Json::Type::json_bool:     // true false
 		m_value.m_bool == true ? ss << "true" : ss << "false";
 		break;
-	case Type::json_int:    // 1234
+	case Type::json_int:             // 1234
 		ss << m_value.m_int;   
 		break;
-	case Json::Type::json_double:  // 123.456
+	case Json::Type::json_double:    // 123.456
 		// ss << m_value.m_double;   // ssÄ¬ÈÏÖ»´æÁ½Î»Ð¡Êý
 		ss << std::fixed << std::setprecision(8) << m_value.m_double;;  // ÒªÏÈÓÃstd::fixedÈ¡ÏûÄ¬ÈÏÊä³ö3Î»Ð¡Êý
 		break;
-	case Json::Type::json_string:  // "abcdef"
+	case Json::Type::json_string:    // "abcdef"
 		ss << "\"" << *m_value.m_string << "\"";
 		break;
-	case Json::Type::json_array:   // [json, json, json, json]
+	case Json::Type::json_array:     // [json, json, json, json]
 	{
 		ss << "[";
 		for (auto it = m_value.m_array->begin(); it != m_value.m_array->end(); ++it) {
 			if (it != m_value.m_array->begin()) {
 				ss << ", ";
 			}
-			ss << it->to_string();
+			ss << it->toString();
 		}
 		ss << "]";
 		break;
@@ -518,7 +514,7 @@ std::string Json::to_string()
 			if (it != m_value.m_object->begin()) {
 				ss << ", ";
 			}
-			ss << "\"" << it->first << "\"" << ":" << it->second.to_string();
+			ss << "\"" << it->first << "\"" << ":" << it->second.toString();
 		}
 		ss << "}";
 		break;
@@ -577,7 +573,7 @@ void Json::clear()
 }
 
 
-void Json::auxiliary_deep_copy(const Json& _json)
+void Json::deepCopy(const Json& _json)
 {
 	m_type = _json.m_type;
 	switch (m_type)
@@ -601,25 +597,15 @@ void Json::auxiliary_deep_copy(const Json& _json)
 		int size = _json.m_value.m_array->size();
 		m_value.m_array = new std::vector<Json>(size);
 		for (int i = 0; i < size; ++i) {    // Í¨³£¿½±´Õû¸övectorÖÐµÄÊý¾ÝÊ±£¬ÓÃÏÂ±ê±éÀú
-			(*(m_value.m_array))[i].auxiliary_deep_copy((*(_json.m_value.m_array))[i]);
+			(*(m_value.m_array))[i].deepCopy((*(_json.m_value.m_array))[i]);
 		}
 		break;
-
-		//// ²âÊÔÒ»ÏÂ
-		//m_value.m_array = new std::vector<Json>(size);
-		//for (auto it = _json.m_value.m_array->begin(); it != _json.m_value.m_array->end(); ++it) {    // Í¨³£¿½±´Õû¸övectorÖÐµÄÊý¾ÝÊ±£¬ÓÃÏÂ±ê±éÀú
-		//	m_value.m_array->push_back(*it);   // push_back ÄÚ²¿µ÷ÓÃ JosnµÄ¿½±´¹¹Ôìº¯Êý£¬JosnµÄ¿½±´¹¹Ôìº¯Êý»áµôÓÃ auxiliary_deep_copy º¯Êý
-		//}
-		//break;
 	}
 	case Type::json_object:
 	{
 		m_value.m_object = new std::map<std::string, Json>();
 		for (auto it = _json.m_value.m_object->begin(); it != _json.m_value.m_object->end(); ++it) {  // Í¨³£¿½±´Õû¸ömapÖÐµÄÊý¾ÝÊ±£¬ÓÃµü´úÆ÷±éÀú
-			// (*(m_value.m_object))[it->first].auxiliary_deep_copy(it->second);    // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ
-
-			(*(m_value.m_object))[it->first].auxiliary_deep_copy(it->second);    // ²»ÄÜÓÃat(),ÒòÎªÈç¹ûkey²»´æÔÚ»á±¨Òì³£
-			                                                                     // ÏÈ(*(m_value.m_object))[it->first]´´½¨¿Õ¼ä£¬ÔÙassisted_deep_copy();
+			(*(m_value.m_object))[it->first].deepCopy(it->second);  // mapÖÐ[]ÔËËã·ûÖØÔØ£¬µ±Ã»ÓÐÕÒµ½keyÖµÊ±£¬Ôò×Ô¶¯´´½¨Ò»¸öÐÂµÄ                                                                     
 		}
 		break;
 	}
@@ -629,71 +615,27 @@ void Json::auxiliary_deep_copy(const Json& _json)
 }
 
 
-Json& Json::getNullJson()
-{
-	static Json null_json{};    // ²»Í¬ÓÚJson{}¸Ã±äÁ¿ÓÃÓÚ´¦ÀíËÑÑ°½á¹ûÎª¿ÕµÄÇé¿ö£¨¾²Ì¬±äÁ¿µÄ´´½¨£¬Ó¦ÔÚ³ÉÔ±º¯ÊýÖÐ½øÐÐ£©
-	if (null_json.getType() != Type::json_null) {   // ÖØÖÃ»úÖÆ£¬·ÀÖ¹ÓÃ»§´íÎóµÄ½øÐÐ¸³Öµ²Ù×÷
-		null_json = Json{};
-	}
-	return null_json;
-}
-
-
-bool Json::save(const std::string& _path)
+bool Json::save(const std::string& _filename)
 {
 	FILE* fp;
-	if ((fp = fopen(_path.c_str(), "w")) == nullptr) {
-		printf("open file fild");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	if ((fp = fopen(_filename.c_str(), "w")) == nullptr) {
+		logger_error(*JsonLogger, "Json::save(): open file fild <%s>", _filename.c_str());
 		return false;
 	}
 	if (this->getType() == Type::json_null) {
-		printf("json is nulljosn");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "Json::save(): null data, json is null");
 		return false;
 	}
-	std::string str = std::move(this->to_string());
+	std::string str = std::move(this->toString());
 	fwrite(str.c_str(), 1, str.size(), fp);
 	fclose(fp);
 	return true;
 }
 
-//Json::operator int&()
-//{
-//	if (m_type != Type::json_int) {
-//		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-//	}
-//	return m_value.m_int;
-//}
-//
-//Json::operator double&()
-//{
-//	if (m_type != Type::json_double) {
-//		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-//	}
-//	return m_value.m_double;
-//}
-//
-//Json::operator bool&()
-//{
-//	if (m_type != Type::json_bool) {
-//		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-//	}
-//	return m_value.m_bool;
-//}
-//
-//Json::operator std::string&()
-//{
-//	if (m_type != Type::json_string) {
-//		printf("type error");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-//	}
-//	return *m_value.m_string;
-//}
 
 
 // =============================================================================================================
 // class JsonParser
-
-
-
 
 JsonParser::JsonParser() : m_string(nullptr), m_index(0)
 {}
@@ -702,8 +644,8 @@ JsonParser::~JsonParser()
 {
 	if (m_string != nullptr) {
 		free(m_string);  // ÕâÀï²»ÄÜÓÃdelete
+		m_string = nullptr;
 	}
-	m_string = nullptr;
 }
 
 JsonParser::JsonParser(const std::string& _string)
@@ -748,13 +690,13 @@ void JsonParser::loadByString(std::string&& _string)
 }
 
 
-bool JsonParser::loadByFile(const std::string& _path)
+bool JsonParser::open(const std::string& _filename)
 {
 	clear();
 
 	FILE* fp;
-	if ((fp = fopen(_path.c_str(), "r")) == nullptr) {
-		printf("open file fild");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	if ((fp = fopen(_filename.c_str(), "r")) == nullptr) {
+		logger_error(*JsonLogger, "Json::save(): open file fild <%s>", _filename.c_str());
 		return false;
 	}
 
@@ -771,7 +713,7 @@ bool JsonParser::loadByFile(const std::string& _path)
 }
 
 
-char JsonParser::get_next_token()
+char JsonParser::getNextValidChar()
 {
 	while (m_string[m_index] == ' ' 
 		|| m_string[m_index] == '\n' 
@@ -785,14 +727,14 @@ char JsonParser::get_next_token()
 
 Json JsonParser::parse()
 {
-	char ch = get_next_token();
+	char ch = getNextValidChar();
 	switch (ch)
 	{
 	case 'n':
-		return parse_null();
+		return parseNull();
 	case 't':
 	case 'f':
-		return parse_bool();
+		return parseBool();
 	case '-':
 	case '0':
 	case '1':
@@ -804,34 +746,33 @@ Json JsonParser::parse()
 	case '7':
 	case '8':
 	case '9':
-		return parse_number();
+		return parseNumber();
 	case '"':
-		return Json(parse_string());
+		return Json(parseString());
 	case '[':
-		return parse_array();
+		return parseArray();
 	case '{':
-		return parse_object();
+		return parseObject();
 	default:  // È¡µ½'\0'ÁË£¬»òÕß¸ñÊ½´íÁË
-		printf("parse failed"); // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "JsonParser::parse(): parse failed, invalid char");
 		return Json(Json::Type::json_null);
 	}
 }
 
-Json JsonParser::parse_null()
+Json JsonParser::parseNull()
 {
 	if (strncmp(&m_string[m_index], "null", 4) == 0) {
 		m_index += 4;  // Ìø¹ýnull     
 		return Json(Json::Type::json_null);
 	}
 	else {
-		// m_index = strlen(m_string);         // ½«m_indexÉèÎª×îºó
-		printf("parse json_null failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "JsonParser::parseNull: parse failed, json_null");
 		return Json(Json::Type::json_null);
 	}
 }
 
 
-Json JsonParser::parse_bool()
+Json JsonParser::parseBool()
 {
 	if (strncmp(&m_string[m_index], "true", 4) == 0) {
 		m_index += 4;  // Ìø¹ýtrue    
@@ -842,35 +783,18 @@ Json JsonParser::parse_bool()
 		return Json(false);
 	}
 	else {
-		// m_index = strlen(m_string);    // ½«m_indexÉèÎª×îºó
-		printf("parse json_bool failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "JsonParser::parseBool: parse failed, json_bool");
 		return Json(Json::Type::json_null);
 	}
 }
 
 
 
-Json JsonParser::parse_number()
+Json JsonParser::parseNumber()
 {
 	// ¿ÆÑ§¼ÆÊý·¨ËµÃ÷
 	// -123.445e-2    -123.445e+2    123.445E2  123.445E+
 	// -123   -123.123
-
-
-	//int tempPos = m_index;   // ±£´ænumberµÄÆðÊ¼Î»ÖÃ
-	//if (m_string[m_index] == '-') {
-	//	++m_index;
-	//}
-	//while (m_string[m_index] >= '0' && m_string[m_index] <= '9') {
-	//	++m_index;
-	//}
-	//if (m_string[m_index] != '.' && m_string[m_index] != 'e') {
-	//	return Json(atoi(&m_string[tempPos]));   // atoiÓöµ½·ÇÊý×Ö×Ö·û»á×Ô¶¯Í£Ö¹
-	//}
-	//++m_index;   // Ìø¹ý'.'
-	//while (m_string[m_index] >= '0' && m_string[m_index] <= '9') {
-	//	++m_index;
-	//}
 
 	char* startPtr = &m_string[m_index];   // ±£´ænumberµÄÆðÊ¼Î»ÖÃ
 	char* endPtr = nullptr;                // ±£´ænumberµÄ½áÊøÎ»ÖÃ
@@ -886,26 +810,11 @@ Json JsonParser::parse_number()
 		&& m_string[m_index] != 'E')
 	{
 		int res = strtol(startPtr, &endPtr, 0);
-		while (m_string[m_index] != *endPtr) {
+		while (m_string[m_index] != *endPtr) {   //////////////////////??????????????????????????????
 			++m_index;
 		}
 		return Json(res);
 	}
-	// ÅÐ¶ÏÊÇ²»ÊÇ¿ÆÑ§¼¼Êý·¨ºÍÐ¡Êý
-	//if (m_string[m_index] == '.'
-	//	|| m_string[m_index] == 'e'
-	//	|| m_string[m_index] == 'E')
-	//{
-	//	double res = strtod(startPtr, &endPtr);
-	//	while (*startPtr != *endPtr) {
-	//		++m_index;
-	//	}
-	//	return Json(res);
-	//}
-	//m_index = strlen(m_string);    // ½«m_indexÉèÎª×îºó
-	//printf("parse json_number failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
-	//return Json(Json::Type::json_null);
-
 	// ´¦Àí¿ÆÑ§¼¼Êý·¨ºÍÐ¡Êý
 	double res = strtod(startPtr, &endPtr);
 	while (m_string[m_index] != *endPtr) {
@@ -915,7 +824,7 @@ Json JsonParser::parse_number()
 }
 
 
-std::string JsonParser::parse_string()
+std::string JsonParser::parseString()
 {
 	// "string"    "123\"string\"2\"233"   
 	
@@ -929,7 +838,7 @@ std::string JsonParser::parse_string()
 		++m_index;
 	}
 	if (m_string[m_index] == '\0') {
-		printf("parse json_string failed");
+		logger_error(*JsonLogger, "JsonParser::parseString: parse failed, json_string");
 		return "";
 	}
 	else {
@@ -940,12 +849,11 @@ std::string JsonParser::parse_string()
 }
 
 
-
-Json JsonParser::parse_array()
+Json JsonParser::parseArray()
 {
 	Json arr(Json::Type::json_array);
 	++m_index;  // Ìø¹ý¿ªÍ·µÄ'['
-	char ch = get_next_token();
+	char ch = getNextValidChar();
 
 	// ¿ÕÊý×é
 	if (ch == ']') {
@@ -955,32 +863,31 @@ Json JsonParser::parse_array()
 	// ·Ç¿ÕÊý×é
 	while (m_string[m_index] != '\0') {
 		arr.append(std::move(parse()));
-		ch = get_next_token();
+		ch = getNextValidChar();
 		if (ch == ']') {
 			++m_index;  // Ìø¹ý×îºóµÄ']'
 			return arr;
 		}
 		else if (ch == ',' ) {
 			++m_index;  // Ìø¹ý','
-			ch = get_next_token();
+			ch = getNextValidChar();
 		}
 		else {
 			break;
 		}
 	}
-	// m_index = strlen(m_string);    // ½«m_indexÉèÎª×îºó
-	printf("parse json_array failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	logger_error(*JsonLogger, "JsonParser::parseArray: parse failed, json_array");
 	return Json(Json::Type::json_null);
 }
 
 
 
-Json JsonParser::parse_object()
+Json JsonParser::parseObject()
 {
 	Json obj(Json::Type::json_object);
 	std::string key;
 	++m_index;  // Ìø¹ý¿ªÍ·µÄ'{'
-	char ch = get_next_token();
+	char ch = getNextValidChar();
 
 	// ¿Õ¶ÔÏó
 	if (ch == '}') {
@@ -992,18 +899,18 @@ Json JsonParser::parse_object()
 		if (ch != '"') {
 			break;
 		}
-		key = std::move(parse_string());
+		key = std::move(parseString());
 
-		ch = get_next_token();
+		ch = getNextValidChar();
 		if (ch != ':') {  
 			break;
 		}
 		++m_index; // Ìø¹ý':'
 
-		ch = get_next_token();
+		ch = getNextValidChar();
 		obj[key] = std::move(parse());
 
-		ch = get_next_token();
+		ch = getNextValidChar();
 		if (ch == '}') {
 			++m_index;  // Ìø¹ý×îºóµÄ'}'
 			return obj;
@@ -1013,10 +920,9 @@ Json JsonParser::parse_object()
 			break;
 		}
 		++m_index;  // Ìø¹ý','
-		ch = get_next_token();
+		ch = getNextValidChar();
 	}
-	// m_index = strlen(m_string);    // ½«m_indexÉèÎª×îºó
-	printf("parse json_object failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+	logger_error(*JsonLogger, "JsonParser::parseObject: parse failed, json_object");
 	return Json(Json::Type::json_null);
 }
 
@@ -1025,14 +931,14 @@ void JsonParser::clear()
 {
 	if (m_string != nullptr) {
 		free(m_string);  // ÕâÀï²»ÄÜÓÃdelete
+		m_string = nullptr;
+		m_index = 0;
 	}
-	m_string = nullptr;
-	m_index = 0;
 }
 
 bool JsonParser::isReadEndOfFile()
 {
-	get_next_token();  // ÒÆ¶¯µ½'\0'
+	getNextValidChar();  // ÒÆ¶¯µ½'\0'
 	return (m_string[m_index] == '\0');
 }
 
@@ -1050,8 +956,8 @@ JsonReader::~JsonReader()
 {
 	if (m_string != nullptr) {
 		free(m_string);  // ÕâÀï²»ÄÜÓÃdelete
+		m_string = nullptr;
 	}
-	m_string = nullptr;
 }
 
 
@@ -1075,9 +981,9 @@ JsonReader& JsonReader::operator[](const std::string _key)
 	// }
 	// )";
 
-	char ch = get_next_token();
+	char ch = getNextValidChar();
 	if (ch != '{') {
-		printf("read json_object failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "JsonReader::operator[](): read failed, Json is not a json_object type");
 		m_index = strlen(m_string);
 		return *this;
 	}
@@ -1085,23 +991,23 @@ JsonReader& JsonReader::operator[](const std::string _key)
 	std::stack<char> stack;
 
 	while (m_string[m_index] != '\0') {
-		ch = get_next_token();
+		ch = getNextValidChar();
 		switch(ch)
 		{
 		case '"': {
-			if (_key.compare(parse_string()) == 0) {   // ½áÊøºóm_index Ö¸Ïò '"'µÄºóÃæ£¬µ«²»ÖªµÀÖ¸Ã»Ö¸Ïò':' 
-				ch = get_next_token(); // È¡µ½':'
-				++m_index;             // Ìø¹ý':'
+			if (_key.compare(parseString()) == 0) {   // ÕÒµ½ÁË£¬ÇÒ parseString ½áÊøºóm_index Ö¸Ïò '"'µÄºóÃæ£¬µ«²»ÖªµÀÊÇ·ñÖ¸Ïò':' 
+				ch = getNextValidChar(); // È¡µ½':'
+				++m_index;               // Ìø¹ý':'
 				return *this;
 			}
-			ch = get_next_token(); // È¡µ½':'
+			ch = getNextValidChar(); // È¡µ½':'
 			break;   // ÍË³öÊ± m_string[m_index] = ':' Ö®ºó»¹ÒªÌø¹ý':'
 		}
-		case '{': {
+		case '{': {  // Ìø¹ýËùÓÐ×Ójson_object
 			stack.push('{');
 			while (stack.empty() == false) {
 				++m_index;
-				ch = get_next_token();
+				ch = getNextValidChar();
 				if (ch == '}') {
 					stack.pop();
 				}
@@ -1109,13 +1015,13 @@ JsonReader& JsonReader::operator[](const std::string _key)
 					stack.push('{');
 				}
 			}
-			break; // ÍË³öÊ± m_string[m_index] = '}' Ö®ºó»¹ÒªÌø¹ý'}'
+			break;  // ÍË³öÊ± m_string[m_index] = '}' Ö®ºó»¹ÒªÌø¹ý'}'
 		}
-		case '[': {
+		case '[': { // Ìø¹ýËùÓÐ×Ójson_array
 			stack.push('[');
 			while (stack.empty() == false) {
 				++m_index;
-				ch = get_next_token();
+				ch = getNextValidChar();
 				if (ch == ']') {
 					stack.pop();
 				}
@@ -1130,17 +1036,17 @@ JsonReader& JsonReader::operator[](const std::string _key)
 		}
 		++m_index;  // Ìø¹ýÖ¸¶¨µÄ×Ö·û
 	}
-	return *this;   // ´ËÊ± m_string[m_index] = '}'
+	return *this;   // ´ËÊ± m_string[m_index] = '}' Èç¹ûÔÙ½øÐÐ parse »áÒý·¢´íÎó  ?????????????????????
 }
 
 
 JsonReader& JsonReader::operator[](int _index)
 {
-	 auto s = R"([1,2,3,[4,5,6],7])";
+	 // [1,2,3,[4,5,6],7,{"k1":123},8]
 
-	char ch = get_next_token();
+	char ch = getNextValidChar();
 	if (ch != '[') {
-		printf("read json_array failed");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "JsonReader::operator[](): read failed, Json is not a json_array type");
 		m_index = strlen(m_string);
 		return *this;
 	}
@@ -1148,9 +1054,9 @@ JsonReader& JsonReader::operator[](int _index)
 	std::stack<char> stack;
 
 	while (m_string[m_index] != '\0') {
-		ch = get_next_token();
+		ch = getNextValidChar();
 
-		if (_index == 0) {
+		if (_index == 0) {   // ÕÒµ½ÁË
 			return *this;
 		}
 
@@ -1158,13 +1064,13 @@ JsonReader& JsonReader::operator[](int _index)
 		{
 		case ',': {
 			--_index;
-			break;  // ÍË³öÊ± m_string[m_index] = ',' Ö®ºó»¹ÒªÌø¹ý','
+			break;   // ÍË³öÊ± m_string[m_index] = ',' Ö®ºó»¹ÒªÌø¹ý','
 		}
-		case '{': {
+		case '{': {  // Ìø¹ýËùÓÐ×Ójson_object
 			stack.push('{');
 			while (stack.empty() == false) {
 				++m_index;
-				ch = get_next_token();
+				ch = getNextValidChar();
 				if (ch == '}') {
 					stack.pop();
 				}
@@ -1172,13 +1078,13 @@ JsonReader& JsonReader::operator[](int _index)
 					stack.push('{');
 				}
 			}
-			break; // ÍË³öÊ± m_string[m_index] = '}' Ö®ºó»¹ÒªÌø¹ý'}'
+			break;  // ÍË³öÊ± m_string[m_index] = '}' Ö®ºó»¹ÒªÌø¹ý'}'
 		}
-		case '[': {
+		case '[': { // Ìø¹ýËùÓÐ×Ójson_array
 			stack.push('[');
 			while (stack.empty() == false) {
 				++m_index;
-				ch = get_next_token();
+				ch = getNextValidChar();
 				if (ch == ']') {
 					stack.pop();
 				}
@@ -1186,21 +1092,21 @@ JsonReader& JsonReader::operator[](int _index)
 					stack.push('[');
 				}
 			}
-			break; // ÍË³öÊ± m_string[m_index] = ']' Ö®ºó»¹ÒªÌø¹ý']'
+			break;  // ÍË³öÊ± m_string[m_index] = ']' Ö®ºó»¹ÒªÌø¹ý']'
 		}
 		default:
 			break;
 		}
 		++m_index;  // Ìø¹ýÖ¸¶¨µÄ×Ö·û
 	}
-	return *this;   // ´ËÊ± m_string[m_index] = ']'
+	return *this;   // ´ËÊ± m_string[m_index] = ']' Èç¹û½øÐÐÔÙ parse »áÒý·¢´íÎó  ??????????????????????????????????
 }
 
 
 Json JsonReader::startRead()
 {
 	if (m_string == nullptr) {
-		printf("m_string is nullptr");   // #@$#@%!$%$#!#!#!#!#!#!#!#!%!#%#!%!#%%@#$@#$@$
+		logger_error(*JsonLogger, "JsonReader::startRead(): null pointer, <m_string> is nullptr");
 		return Json(Json::Type::json_null);
 	}
 	else {

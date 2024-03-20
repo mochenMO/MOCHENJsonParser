@@ -22,13 +22,28 @@
 * 4.如果有项目要使用，该日志库，请把该日志库包含在.cpp文件中，同时创建一个全局变量。如果想要暴露该全局变量，
 *   则可以再在相应的头文件中声明该全局变量。
 * 5.要配合配置系统保存当前使用的文件名，才能实现续写功能，不然一旦文件满了，每次启动程序都会发生文件滚动。
+* 6.为了多线程下的安全性和输出的日志的稳定性，目前不支持根据loggername查找或删除logaddender
+* 7.日志输出格式：[年-月-日 时:分:秒][日志器名称][日志等级][文件名]:[行号][日志信息]
+* 8.文件滚动的命名格式：文件名_log_0000-00-00#00-00-00.txt
+* 9.日志信息的描述格式：错误类型: 对该问题的描述可以<变量名>更详细的描述该问题
+*	常用的错误类型如下:
+*		index out of range		下标越界
+*		value out of range      数值越界
+*		valid key               无效键值
+*		null pointer            指针为空 
+*		null [data]             数据为空
+*		open [file] failed      打开文件失败
+*		[data] type error       数据类型错误
+*	    [data] must be unique   数据必须唯一
+*
 */
 
 
 
 
 /*// 还未解决的问题
-* 1.
+* 1. 
+* 
 * 
 */
 
@@ -79,27 +94,17 @@ enum class LogLevel
 class LogAppender
 {
 public:
-	enum class Type
-	{
-		withoutLogAppender = 0,
-		ConsoleLogAppender,
-		FileLogAppender
-	};
-protected:
-	Type m_type;
-public:
-	LogAppender();
+	LogAppender() = default;
 	virtual ~LogAppender() {}                    // 虚析构函数需要实现函数的定义，如果只写函数说明，可能出现链接错误
 
 	virtual void log(const char* _massage) = 0;  // 纯虚函数
-	inline Type getType();
 };
 
 
 class ConsoleLogAppender : public LogAppender
 {
 public:
-	ConsoleLogAppender(LogLevel _level = LogLevel::debug);
+	ConsoleLogAppender() = default;
 
 	void log(const char* _massage) override;
 };
@@ -117,7 +122,7 @@ private:
 #define M_FILEMAXSIZE 409600
 public:
 	FileLogAppender();
-	FileLogAppender(const std::string& _filename, int _maxSize = M_FILEMAXSIZE, LogLevel _level = LogLevel::debug);
+	FileLogAppender(const std::string& _filename, int _maxSize = M_FILEMAXSIZE);
 	~FileLogAppender();
 
 	FileLogAppender(const FileLogAppender& _value) = delete;  // 不能拷贝，因为实现滚动机制时要改变文件名。
@@ -191,6 +196,9 @@ public:
 	void addLogEvent(LogEvent _logEvent);   // 该函数需要线程安全
 };
 
+// 声明全局函数，代替在头文件中声明全局变量，且返回的指针类型，避免调用拷贝或移动相关函数
+extern inline LogEventManager* getDefaultLogEventManager();
+
 
 // 日志器
 class Logger
@@ -200,7 +208,7 @@ private:
 	std::string m_loggername; 
 	LogLevel m_level;
 public:
-	Logger(const std::string& _loggername, LogLevel _level = LogLevel::debug, std::shared_ptr<LogAppender> _appender = (*getDefaultLogAppender()));
+	Logger(const std::string& _loggername, LogLevel _level = LogLevel::debug, std::shared_ptr<LogAppender> _appender = std::make_shared<ConsoleLogAppender>());   // 注意：虽然DefaultLogAppender先被创建，但它的资源释放由LogEventManager控制
 	~Logger() = default;   // LogAppender的释放交给LogEventManager
 
 	Logger(const Logger& _logger) = delete;
@@ -242,29 +250,26 @@ extern inline Logger* getDefaultLogger();
 	mochen::log::getDefaultLogger()->log(mochen::log::LogLevel::fatal, __FILE__, __LINE__, _format, ##__VA_ARGS__)
 
 
-#define logger_debug(logger, _format, ...) \
-	logger.log(mochen::log::LogLevel::debug, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define logger_debug(_logger, _format, ...) \
+	(_logger).log(mochen::log::LogLevel::debug, __FILE__, __LINE__, _format, ##__VA_ARGS__)
 
-#define logger_info(logger, _format, ...) \
-	logger.log(mochen::log::LogLevel::info, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define logger_info(_logger, _format, ...) \
+	(_logger).log(mochen::log::LogLevel::info, __FILE__, __LINE__, _format, ##__VA_ARGS__)
 
-#define logger_warn(logger, _format, ...) \
-	logger.log(mochen::log::LogLevel::warn, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define logger_warn(_logger, _format, ...) \
+	(_logger).log(mochen::log::LogLevel::warn, __FILE__, __LINE__, _format, ##__VA_ARGS__)
 
-#define logger_error(logger, _format, ...) \
-	logger.log(mochen::log::LogLevel::error, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define logger_error(_logger, _format, ...) \
+	(_logger).log(mochen::log::LogLevel::error, __FILE__, __LINE__, _format, ##__VA_ARGS__)
 
-#define logger_fatal(logger, _format, ...) \
-	logger.log(mochen::log::LogLevel::fatal, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define logger_fatal(_logger, _format, ...) \
+	(_logger).log(mochen::log::LogLevel::fatal, __FILE__, __LINE__, _format, ##__VA_ARGS__)
 
 
 
 };
 
 };
-
-
-
 
 
 
