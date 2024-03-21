@@ -24,12 +24,18 @@
     <ClCompile Include="log\log.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="dbg\recorder.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="json\json.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="log\log.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="dbg\recorder.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

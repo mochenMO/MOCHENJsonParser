@@ -128,11 +128,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="dbg\recorder.cpp" />
     <ClCompile Include="json\json.cpp" />
     <ClCompile Include="log\log.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="dbg\recorder.h" />
     <ClInclude Include="json\json.h" />
     <ClInclude Include="log\log.h" />
   </ItemGroup>

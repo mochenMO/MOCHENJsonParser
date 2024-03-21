@@ -3,8 +3,10 @@
 #include <crtdbg.h>          
 #include <windows.h>        // 用于计算运行时间
 
-#include "json/json.h"
+#include "log/log.h"
 
+#include "json/json.h"
+#include "dbg/recorder.h"
 
 #include <string>
 #include <vector>
@@ -173,8 +175,9 @@ void test05()
 	printf("%s\n\n", jr["array"][3]["key"].startRead().getString().c_str());
 	printf("%d\n\n", jr["object"]["nested_array"][2].startRead().getInt());
 
-	printf("%d\n\n", jr[0]["nested_array"]["test"][2].startRead().getType());  // 索引"test"有问题，没找到，故返回空值
-	printf("%d\n\n", jr["array"][10].startRead().getType());                   // 索引10有问题，没找到，故返回空值
+	printf("%d\n\n", jr[20].startRead().getType());                 // 索引20有问题，没找到，故返回空值
+	printf("%d\n\n", jr["object"]["test"].startRead().getType());   // 索引"test"有问题，没找到，故返回空值
+	printf("%d\n\n", jr["array"][10].startRead().getType());        // 索引10有问题，没找到，故返回空值
 
 	printf("\n\n");
 }
@@ -215,6 +218,46 @@ void test06()
 	printf("%s\n", j6.parse().toString().c_str()); //  {"":null}
 }
 
+// 测试log日志的输出
+void test07()
+{
+	mochen::dbg::RunTimeRecorder runTime{};
+	JsonReader jr{};
+	jr.open("test/test.json");
+
+	for (int i = 0; i < 1000; ++i) {
+		printf("%d\n", jr["packages"]["node_modules/@babel/helper-module-transforms"]["dependencies"]["tttt"].startRead().getType()); // 索引tttt有问题，没找到，故返回空值
+	}
+}
+
+
+void threadFunction()
+{
+	JsonReader jr{};
+	jr.open("test/test.json");
+
+	for (int i = 0; i < 3000; ++i) {
+		jr["tttt"].startRead().getType();
+		printf("%d\n", i); // 索引tttt有问题，没找到，故返回空值
+	}
+}
+
+
+// 多线程测试
+void test08()
+{
+	std::thread t1(&threadFunction);
+	std::thread t2(&threadFunction);
+	std::thread t3(&threadFunction);
+
+	t1.join();
+	t2.join();
+	t3.join();
+
+	for (int i = 0; i < 1000; ++i) {
+		logger_error(getJsonLogger(), "JsonParser::parse(): parse failed, invalid char <%d>", i);
+	}
+}
 
 
 int main()
@@ -225,15 +268,11 @@ int main()
 		// test03(); // 测试读取并解析json文件
 		// test04(); // 测试先解析字符型的数据，再将解析的数据保存
 		// test05(); // 测试 JsonReader 和当输入的索引有误时，是否返回空的json 
-		test06();    // 测试对各种损坏数据的解析情况（解析器尽京可能的把正确的数据解析出来)
+		// test06(); // 测试对各种损坏数据的解析情况（解析器尽京可能的把正确的数据解析出来)
+		// test07(); // 测试log日志的输出
+		test08();    // 多线程测试
 
 
-
-		auto str5 = R"([123,1134,{"key1": 123}])";
-		JsonParser j5{};
-		j5.loadByString(str5);
-		printf("%s\n", j5.parse().isHaveValue("key") ? "true": "false");  // 报错 false
-		printf("\n\n");
 	}
 
 	return 0;

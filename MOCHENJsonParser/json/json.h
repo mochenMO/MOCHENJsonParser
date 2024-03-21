@@ -227,7 +227,7 @@ public:
 };
 
 
-
+extern inline log::Logger* getJsonLogger();   // 可供其他文件使用
 
 
 
